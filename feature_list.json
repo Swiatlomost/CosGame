@@ -37,7 +37,7 @@
       "id": "gyroscope_data",
       "name": "Zbieranie danych z żyroskopu",
       "description": "Collect and process gyroscope sensor data",
-      "passes": false
+      "passes": true
     },
     {
       "id": "har_classifier",

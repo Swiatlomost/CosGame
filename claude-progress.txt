@@ -62,3 +62,33 @@ Key features:
 Next recommended features:
 1. gyroscope_data - similar implementation, reuses SensorData classes
 2. har_classifier - can now use accelerometer data with ring buffer
+
+[2026-01-10] Session 3: Gyroscope Data Collection
+-------------------------------------------------
+Feature: gyroscope_data
+Status: COMPLETED
+
+Implementation:
+- GyroscopeManager with Android SensorManager integration
+- Measures angular velocity around X, Y, Z axes in rad/s
+- StateFlow-based reactive API (isActive, latestReading, isAvailable)
+- Integration with SensorRingBuffer for windowed data
+- GyroscopeInfo with rad/s to deg/s conversion
+- Reuses SensorReading, SensorConfig, SensorDataListener from SensorData.kt
+
+Files created:
+- app/src/main/java/com/cosgame/costrack/sensor/GyroscopeManager.kt
+- app/src/test/java/com/cosgame/costrack/sensor/GyroscopeManagerTest.kt
+
+Test coverage:
+- 6 tests for GyroscopeInfo (frequency, deg/s conversion)
+- 4 tests for gyroscope reading interpretation
+
+Sensor package now complete:
+- AccelerometerManager: linear acceleration (m/s²)
+- GyroscopeManager: angular velocity (rad/s)
+- Shared: SensorReading, SensorConfig, SensorDataListener, SensorRingBuffer
+
+Next recommended features:
+1. har_classifier - both sensor managers ready for HAR input
+2. mode_switching - UI state management foundation
