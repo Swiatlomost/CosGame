@@ -92,3 +92,44 @@ Sensor package now complete:
 Next recommended features:
 1. har_classifier - both sensor managers ready for HAR input
 2. mode_switching - UI state management foundation
+
+[2026-01-10] Session 4: HAR Classifier (TFLite)
+----------------------------------------------
+Feature: har_classifier
+Status: COMPLETED
+
+Implementation:
+- Classifier interface with id, name, windowSize, initialize(), close()
+- ClassificationResult with label, confidence, allProbabilities, topN()
+- HarActivity enum with 6 standard activities + UNKNOWN
+- HarClassifier TFLite implementation:
+  - Input: [1, windowSize, 6] (accel xyz + gyro xyz interleaved)
+  - Output: [1, 6] probabilities for each activity
+  - classify(accelBuffer, gyroBuffer) using SensorRingBuffer
+  - classifyRaw(accelData, gyroData) for direct float arrays
+- HarClassifierConfig for model settings
+- ClassificationListener for event callbacks
+
+Files created:
+- app/src/main/java/com/cosgame/costrack/classifier/Classifier.kt
+- app/src/main/java/com/cosgame/costrack/classifier/HarClassifier.kt
+- app/src/test/java/com/cosgame/costrack/classifier/ClassifierTest.kt
+- app/src/main/assets/ (for .tflite models)
+
+Dependencies added:
+- org.tensorflow:tensorflow-lite:2.14.0
+
+Test coverage:
+- 6 tests for ClassificationResult (confidence, topN, timestamp)
+- 8 tests for HarActivity enum (fromLabel, fromIndex, standardActivities)
+- 2 tests for HarClassifierConfig
+
+Integration ready:
+- SensorRingBuffer → HarClassifier.classify()
+- AccelerometerManager + GyroscopeManager → HAR prediction
+
+Note: Requires har_model.tflite in assets/ folder for runtime use
+
+Next recommended features:
+1. mode_switching - UI state for User/Developer modes
+2. dna_aggregator - combine multiple classifier outputs

@@ -43,6 +43,11 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.4"
     }
+
+    // Don't compress TFLite models
+    androidResources {
+        noCompress += "tflite"
+    }
 }
 
 dependencies {
@@ -53,6 +58,9 @@ dependencies {
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+    // TensorFlow Lite
+    implementation("org.tensorflow:tensorflow-lite:2.14.0")
 
     // Compose
     implementation(platform("androidx.compose:compose-bom:2023.10.01"))

@@ -43,7 +43,7 @@
       "id": "har_classifier",
       "name": "Klasyfikator HAR (TFLite)",
       "description": "Human Activity Recognition classifier using TensorFlow Lite",
-      "passes": false
+      "passes": true
     },
     {
       "id": "ring_buffer",
