@@ -25,7 +25,7 @@
       "id": "settings_screen",
       "name": "Ekran Settings z Dev Options",
       "description": "Settings screen with developer options for debugging and configuration",
-      "passes": false
+      "passes": true
     },
     {
       "id": "accelerometer_data",

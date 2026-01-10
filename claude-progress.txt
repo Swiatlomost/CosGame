@@ -310,3 +310,49 @@ Sensors → HarClassifier → DnaAggregator → UI
 Next recommended features:
 1. home_screen - main navigation with tabs
 2. settings_screen - dev options toggle
+
+[2026-01-10] Session 9: Settings Screen (Jetpack Compose)
+---------------------------------------------------------
+Feature: settings_screen
+Status: COMPLETED
+
+Implementation:
+- SettingsScreen composable with Material 3 design
+- SettingsViewModel managing app settings
+- Two display modes based on AppMode:
+
+  USER MODE (basic):
+  - Sampling rate selection (25/50/100 Hz)
+  - About section with app info
+  - Version tap-to-unlock (7 taps to unlock dev mode)
+
+  DEVELOPER MODE (full options):
+  - All User mode features +
+  - Dev mode toggle switch
+  - Lock developer mode button
+  - Reset all settings (with confirmation dialog)
+  - DEV badge on version
+
+- Hidden dev unlock gesture (like Android)
+- Toast notifications for unlock progress
+- AlertDialog for reset confirmation
+
+Files created:
+- app/src/main/java/com/cosgame/costrack/ui/settings/SettingsScreen.kt
+- app/src/main/java/com/cosgame/costrack/ui/settings/SettingsViewModel.kt
+
+UI Components:
+- SettingsSection: Grouped settings with title
+- SettingsSwitch: Toggle with title/subtitle
+- SettingsButton: Clickable action item
+- SamplingRateSetting: Radio button group
+- VersionItem: Tap-to-unlock with DEV badge
+- ResetConfirmationDialog: Destructive action confirm
+
+Unlock mechanism:
+- Tap version 7 times within 3 seconds
+- Shows remaining taps toast (when <= 3)
+- Persisted unlock state
+
+Next recommended feature:
+1. home_screen - main navigation tying all screens together
