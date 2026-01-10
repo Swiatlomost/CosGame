@@ -26,6 +26,39 @@ Test coverage:
 - 6 unit tests for SensorRingBuffer
 - Edge cases: empty buffer, full buffer, wraparound, multiple wraparounds
 
+[2026-01-10] Session 2: Accelerometer Data Collection
+-----------------------------------------------------
+Feature: accelerometer_data
+Status: COMPLETED
+
+Implementation:
+- SensorReading data class with x, y, z, timestamp and magnitude calculation
+- SensorConfig for configurable sampling rates (25/50/100 Hz presets)
+- AccelerometerManager with Android SensorManager integration
+- StateFlow-based reactive API (isActive, latestReading, isAvailable)
+- Integration with SensorRingBuffer for windowed data
+- SensorDataListener callback interface for event-driven usage
+- AccelerometerInfo for querying sensor capabilities
+
+Files created:
+- app/src/main/java/com/cosgame/costrack/sensor/SensorData.kt
+- app/src/main/java/com/cosgame/costrack/sensor/AccelerometerManager.kt
+- app/src/test/java/com/cosgame/costrack/sensor/SensorDataTest.kt
+
+Dependencies added:
+- kotlinx-coroutines-android:1.7.3
+
+Test coverage:
+- 8 tests for SensorReading (magnitude, toFloatArray, equality)
+- 6 tests for SensorConfig (frequency calculations, presets)
+- 3 tests for AccelerometerInfo (frequency calculations)
+
+Key features:
+- Automatic buffer filling for classifier readiness
+- getBufferFillRatio() for UI progress indication
+- isBufferReady() to check when classification can start
+- Configurable sampling periods and report latency
+
 Next recommended features:
-1. accelerometer_data / gyroscope_data - can now use SensorRingBuffer
-2. har_classifier - can now use ring buffer for windowed input
+1. gyroscope_data - similar implementation, reuses SensorData classes
+2. har_classifier - can now use accelerometer data with ring buffer

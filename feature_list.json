@@ -31,7 +31,7 @@
       "id": "accelerometer_data",
       "name": "Zbieranie danych z akcelerometru",
       "description": "Collect and process accelerometer sensor data",
-      "passes": false
+      "passes": true
     },
     {
       "id": "gyroscope_data",
