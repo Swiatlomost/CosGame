@@ -7,7 +7,7 @@
       "id": "home_screen",
       "name": "Ekran Home (User/Dev mode)",
       "description": "Main home screen with User and Developer mode switching",
-      "passes": false
+      "passes": true
     },
     {
       "id": "sensors_screen",
