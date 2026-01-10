@@ -170,3 +170,46 @@ Key features:
 Next recommended features:
 1. dna_aggregator - combine classifier outputs
 2. home_screen - main UI with mode indicator
+
+[2026-01-10] Session 6: DNA Aggregator
+--------------------------------------
+Feature: dna_aggregator
+Status: COMPLETED
+
+Implementation:
+- DnaAggregator class combining multiple classifier outputs
+- 4 aggregation strategies:
+  - MAJORITY_VOTE: most frequent label wins
+  - WEIGHTED_AVERAGE: confidence-weighted probabilities
+  - RECENT_WEIGHTED: exponential decay favoring recent results
+  - CONFIDENCE_THRESHOLD: only high-confidence results
+- Temporal smoothing with configurable history window
+- Stability detection (avoids flickering predictions)
+- StateFlow-based reactive output
+- DnaConfig for all parameters
+- AggregatedResult with distribution and metadata
+
+Files created:
+- app/src/main/java/com/cosgame/costrack/aggregator/DnaAggregator.kt
+- app/src/test/java/com/cosgame/costrack/aggregator/DnaAggregatorTest.kt
+
+Test coverage:
+- 11 tests for DnaAggregator (voting, stability, reset, history)
+- 2 tests for AggregationStrategy enum
+- 2 tests for DnaConfig defaults
+- 3 tests for AggregatedResult validation
+
+Key features:
+- Sliding window of recent classifications
+- Configurable stability threshold (default: 3 consistent results)
+- getStableLabel() for flicker-free UI updates
+- hasEnoughData() to check aggregation readiness
+
+Integration:
+HarClassifier → DnaAggregator → Stable UI output
+
+Next recommended features:
+1. home_screen - main navigation UI
+2. sensors_screen - sensor toggles
+3. classifiers_screen - results display
+4. settings_screen - dev options

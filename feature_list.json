@@ -55,7 +55,7 @@
       "id": "dna_aggregator",
       "name": "DNA Aggregator",
       "description": "Aggregator for combining multiple classifier outputs",
-      "passes": false
+      "passes": true
     },
     {
       "id": "mode_switching",
