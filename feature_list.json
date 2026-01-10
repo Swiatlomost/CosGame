@@ -49,7 +49,7 @@
       "id": "ring_buffer",
       "name": "Ring buffer dla klasyfikatorów",
       "description": "Ring buffer implementation for efficient data windowing for classifiers",
-      "passes": false
+      "passes": true
     },
     {
       "id": "dna_aggregator",
