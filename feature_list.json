@@ -13,7 +13,7 @@
       "id": "sensors_screen",
       "name": "Ekran Sensors z toggle dla każdego sensora",
       "description": "Screen displaying available sensors with individual toggle controls",
-      "passes": false
+      "passes": true
     },
     {
       "id": "classifiers_screen",

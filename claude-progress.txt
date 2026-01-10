@@ -213,3 +213,52 @@ Next recommended features:
 2. sensors_screen - sensor toggles
 3. classifiers_screen - results display
 4. settings_screen - dev options
+
+[2026-01-10] Session 7: Sensors Screen (Jetpack Compose)
+--------------------------------------------------------
+Feature: sensors_screen
+Status: COMPLETED
+
+Implementation:
+- SensorsScreen composable with Material 3 design
+- SensorsViewModel with StateFlow-based UI state
+- Two display modes based on AppMode:
+
+  USER MODE (simple):
+  - Sensor toggle switches
+  - Magnitude display
+  - Buffer progress bar
+  - Start/Stop all buttons
+
+  DEVELOPER MODE (detailed):
+  - All User mode features +
+  - Raw X, Y, Z values (monospace font)
+  - Sample count
+  - Sampling rate (Hz)
+  - Buffer fill percentage
+  - Sensor hardware info (name, max freq, range)
+
+- Animated transitions between modes
+- CosGameTheme with light/dark color schemes
+
+Files created:
+- app/src/main/java/com/cosgame/costrack/ui/sensors/SensorsScreen.kt
+- app/src/main/java/com/cosgame/costrack/ui/sensors/SensorsViewModel.kt
+- app/src/main/java/com/cosgame/costrack/ui/theme/Theme.kt
+
+Dependencies added:
+- lifecycle-viewmodel-compose:2.6.2
+- lifecycle-runtime-compose:2.6.2
+
+UI Components:
+- QuickActionsCard: Start/Stop all sensors
+- SensorCard: Individual sensor with toggle
+- UserModeDisplay: Simple magnitude
+- DevModeDisplay: Raw values + statistics
+- BufferProgressBar: Visual buffer fill
+- DevInfoCard: Hardware specifications
+
+Next recommended features:
+1. home_screen - main navigation
+2. classifiers_screen - HAR results
+3. settings_screen - dev options toggle
