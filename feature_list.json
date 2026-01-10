@@ -1,0 +1,67 @@
+{
+  "project": "CosGame",
+  "description": "Android app for sensor data collection with HAR classification",
+  "stack": "Kotlin + Jetpack Compose",
+  "features": [
+    {
+      "id": "home_screen",
+      "name": "Ekran Home (User/Dev mode)",
+      "description": "Main home screen with User and Developer mode switching",
+      "passes": false
+    },
+    {
+      "id": "sensors_screen",
+      "name": "Ekran Sensors z toggle dla każdego sensora",
+      "description": "Screen displaying available sensors with individual toggle controls",
+      "passes": false
+    },
+    {
+      "id": "classifiers_screen",
+      "name": "Ekran Classifiers pokazujący wyniki",
+      "description": "Screen showing classification results from ML models",
+      "passes": false
+    },
+    {
+      "id": "settings_screen",
+      "name": "Ekran Settings z Dev Options",
+      "description": "Settings screen with developer options for debugging and configuration",
+      "passes": false
+    },
+    {
+      "id": "accelerometer_data",
+      "name": "Zbieranie danych z akcelerometru",
+      "description": "Collect and process accelerometer sensor data",
+      "passes": false
+    },
+    {
+      "id": "gyroscope_data",
+      "name": "Zbieranie danych z żyroskopu",
+      "description": "Collect and process gyroscope sensor data",
+      "passes": false
+    },
+    {
+      "id": "har_classifier",
+      "name": "Klasyfikator HAR (TFLite)",
+      "description": "Human Activity Recognition classifier using TensorFlow Lite",
+      "passes": false
+    },
+    {
+      "id": "ring_buffer",
+      "name": "Ring buffer dla klasyfikatorów",
+      "description": "Ring buffer implementation for efficient data windowing for classifiers",
+      "passes": false
+    },
+    {
+      "id": "dna_aggregator",
+      "name": "DNA Aggregator",
+      "description": "Aggregator for combining multiple classifier outputs",
+      "passes": false
+    },
+    {
+      "id": "mode_switching",
+      "name": "Przełączanie User/Developer mode",
+      "description": "Toggle between User mode (simplified UI) and Developer mode (full access)",
+      "passes": false
+    }
+  ]
+}
