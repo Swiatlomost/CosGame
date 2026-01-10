@@ -262,3 +262,51 @@ Next recommended features:
 1. home_screen - main navigation
 2. classifiers_screen - HAR results
 3. settings_screen - dev options toggle
+
+[2026-01-10] Session 8: Classifiers Screen (Jetpack Compose)
+------------------------------------------------------------
+Feature: classifiers_screen
+Status: COMPLETED
+
+Implementation:
+- ClassifiersScreen composable with Material 3 design
+- ClassifiersViewModel managing HAR + DNA aggregation
+- Two display modes based on AppMode:
+
+  USER MODE (simple):
+  - Large activity icon with emoji
+  - Activity name in large text
+  - Confidence bar with color coding
+  - Stability indicator (green dot = stable)
+  - Start/Stop/Reset controls
+
+  DEVELOPER MODE (detailed):
+  - All User mode features +
+  - All probabilities with progress bars
+  - Inference time (ms)
+  - Classification count
+  - Aggregation strategy name
+  - Sample count in aggregator
+
+- Animated pulse effect when detecting
+- Buffer progress during data collection
+- Error handling with dismissible card
+
+Files created:
+- app/src/main/java/com/cosgame/costrack/ui/classifiers/ClassifiersScreen.kt
+- app/src/main/java/com/cosgame/costrack/ui/classifiers/ClassifiersViewModel.kt
+
+UI Components:
+- ControlCard: Start/Stop/Reset buttons
+- BufferCollectingCard: Progress while filling buffer
+- ActivityDisplayCard: Main activity with icon/confidence
+- ProbabilitiesCard: All class probabilities (dev mode)
+- InferenceStatsCard: Performance metrics (dev mode)
+- PlaceholderCard: Initial state before running
+
+Integration:
+Sensors → HarClassifier → DnaAggregator → UI
+
+Next recommended features:
+1. home_screen - main navigation with tabs
+2. settings_screen - dev options toggle
