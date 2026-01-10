@@ -133,3 +133,40 @@ Note: Requires har_model.tflite in assets/ folder for runtime use
 Next recommended features:
 1. mode_switching - UI state for User/Developer modes
 2. dna_aggregator - combine multiple classifier outputs
+
+[2026-01-10] Session 5: Mode Switching (User/Developer)
+-------------------------------------------------------
+Feature: mode_switching
+Status: COMPLETED
+
+Implementation:
+- AppMode enum (USER, DEVELOPER) with fromString parser
+- ModeFeature enum defining 12 features with mode availability flags:
+  - 4 basic features (always available)
+  - 8 developer-only features (raw data, debug, export, etc.)
+- AppStateManager with:
+  - StateFlow-based reactive mode state
+  - SharedPreferences persistence
+  - Dev mode unlock gesture (7 taps in 3 seconds)
+  - Feature availability checking
+  - Singleton pattern for app-wide access
+
+Files created:
+- app/src/main/java/com/cosgame/costrack/state/AppMode.kt
+- app/src/main/java/com/cosgame/costrack/state/AppStateManager.kt
+- app/src/test/java/com/cosgame/costrack/state/AppModeTest.kt
+
+Test coverage:
+- 5 tests for AppMode (default, fromString, case insensitive)
+- 4 tests for ModeFeature (availability in each mode)
+- 2 tests for AppStateManager constants
+
+Key features:
+- User mode: simplified UI, essential info only
+- Developer mode: full access, debug info, raw data
+- Hidden unlock mechanism (like Android dev options)
+- Persistent state across app restarts
+
+Next recommended features:
+1. dna_aggregator - combine classifier outputs
+2. home_screen - main UI with mode indicator

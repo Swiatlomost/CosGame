@@ -61,7 +61,7 @@
       "id": "mode_switching",
       "name": "Przełączanie User/Developer mode",
       "description": "Toggle between User mode (simplified UI) and Developer mode (full access)",
-      "passes": false
+      "passes": true
     }
   ]
 }
