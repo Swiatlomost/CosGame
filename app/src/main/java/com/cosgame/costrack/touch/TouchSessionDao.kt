@@ -50,4 +50,14 @@ interface TouchSessionDao {
 
     @Query("SELECT SUM(LENGTH(touchEventsJson) * 2) FROM touch_sessions")
     suspend fun getTotalDataSize(): Long?
+
+    // List-returning versions for direct access
+    @Query("SELECT * FROM touch_sessions ORDER BY startTime DESC")
+    suspend fun getAllSessionsList(): List<TouchSession>
+
+    @Query("SELECT * FROM touch_sessions WHERE label IS NOT NULL ORDER BY startTime DESC")
+    suspend fun getLabeledSessionsList(): List<TouchSession>
+
+    @Query("SELECT * FROM touch_sessions WHERE label = :label ORDER BY startTime DESC")
+    suspend fun getSessionsByLabelList(label: String): List<TouchSession>
 }

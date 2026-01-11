@@ -1,304 +1,332 @@
 package com.cosgame.costrack.touch
 
-import com.cosgame.costrack.data.RingBuffer
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+/**
+ * Touch DNA - behavioral profile derived from touch patterns.
+ * Provides high-level traits that characterize user's touch behavior.
+ */
+data class TouchDna(
+    val intensity: Float,      // 0-1: How forceful touches are (pressure-based)
+    val precision: Float,      // 0-1: How accurate/consistent touches are
+    val tempo: Float,          // 0-1: Touch rhythm speed (slow=0, fast=1)
+    val dominantHand: HandPreference,  // Detected hand preference
+    val consistency: Float,    // 0-1: How consistent behavior is across sessions
+    val coverage: Float,       // 0-1: Screen usage coverage
+    val sessionCount: Int      // Number of sessions used for this profile
+) {
+    /**
+     * Get trait summary as a map.
+     */
+    fun toMap(): Map<String, Any> = mapOf(
+        "intensity" to intensity,
+        "precision" to precision,
+        "tempo" to tempo,
+        "dominantHand" to dominantHand.name,
+        "consistency" to consistency,
+        "coverage" to coverage,
+        "sessionCount" to sessionCount
+    )
+
+    /**
+     * Format intensity as description.
+     */
+    val intensityDescription: String get() = when {
+        intensity < 0.3f -> "Light touch"
+        intensity < 0.6f -> "Normal pressure"
+        else -> "Firm grip"
+    }
+
+    /**
+     * Format precision as description.
+     */
+    val precisionDescription: String get() = when {
+        precision < 0.3f -> "Exploratory"
+        precision < 0.6f -> "Average"
+        else -> "Precise"
+    }
+
+    /**
+     * Format tempo as description.
+     */
+    val tempoDescription: String get() = when {
+        tempo < 0.3f -> "Relaxed"
+        tempo < 0.6f -> "Moderate"
+        else -> "Quick"
+    }
+
+    companion object {
+        val EMPTY = TouchDna(
+            intensity = 0.5f,
+            precision = 0.5f,
+            tempo = 0.5f,
+            dominantHand = HandPreference.UNKNOWN,
+            consistency = 0f,
+            coverage = 0f,
+            sessionCount = 0
+        )
+    }
+}
 
 /**
- * DNA.Touch - Dynamic Neural Aggregator for touch interactions.
- *
- * Tracks and aggregates touch patterns to build a behavioral profile:
- * - Touch intensity (0-1): How forcefully/frequently the user touches
- * - Touch style: Tapper, Swiper, or Mixed
- * - Pattern stability: Consistency of touch patterns over time
+ * Hand preference detected from touch patterns.
  */
-class TouchDna(
-    private val config: TouchDnaConfig = TouchDnaConfig()
-) {
-    // Histories for temporal smoothing
-    private val intensityHistory = RingBuffer<Float>(config.historySize)
-    private val styleHistory = RingBuffer<TouchStyle>(config.historySize)
-    private val pressureHistory = RingBuffer<Float>(config.historySize)
-    private val velocityHistory = RingBuffer<Float>(config.historySize)
-    private val tpmHistory = RingBuffer<Float>(config.historySize)
+enum class HandPreference {
+    LEFT,
+    RIGHT,
+    AMBIDEXTROUS,
+    UNKNOWN
+}
 
-    // Gesture type counts for style determination
-    private var tapCount = 0
-    private var swipeCount = 0
-    private var drawCount = 0
-    private var totalGestures = 0
+/**
+ * Generates TouchDna from touch sessions.
+ */
+class TouchDnaGenerator {
 
-    // State flows
-    private val _profile = MutableStateFlow(TouchDnaProfile())
-    val profile: StateFlow<TouchDnaProfile> = _profile.asStateFlow()
-
-    private val _isStable = MutableStateFlow(false)
-    val isStable: StateFlow<Boolean> = _isStable.asStateFlow()
-
-    private var lastStyle: TouchStyle? = null
-    private var styleStabilityCounter = 0
+    private val featureExtractor = TouchFeatureExtractor()
+    private val heatmapGenerator = TouchHeatmapGenerator()
 
     /**
-     * Add touch data from analyzer metrics.
+     * Generate DNA profile from sessions.
      */
-    fun addMetrics(metrics: TouchMetrics) {
-        // Update histories
-        pressureHistory.push(metrics.averagePressure)
-        if (metrics.averageSwipeVelocity > 0) {
-            velocityHistory.push(metrics.averageSwipeVelocity)
-        }
-        if (metrics.touchesPerMinute > 0) {
-            tpmHistory.push(metrics.touchesPerMinute)
+    fun generate(sessions: List<TouchSession>): TouchDna {
+        if (sessions.isEmpty()) return TouchDna.EMPTY
+
+        // Extract features from all sessions
+        val allFeatures = sessions.map { session ->
+            featureExtractor.extractFeatures(session)
         }
 
-        updateProfile()
-    }
-
-    /**
-     * Add a completed touch sequence.
-     */
-    fun addSequence(sequence: TouchSequence) {
-        totalGestures++
-
-        when (sequence.gestureType) {
-            GestureType.TAP, GestureType.LONG_TAP -> tapCount++
-            GestureType.SWIPE -> swipeCount++
-            GestureType.DRAG -> swipeCount++
-            GestureType.DRAW -> drawCount++
-            else -> { }
+        // Generate heatmaps
+        val heatmaps = sessions.map { session ->
+            val events = TouchSessionCollector.eventsFromJson(session.touchEventsJson)
+            heatmapGenerator.generate(events)
         }
 
-        // Update intensity based on sequence
-        val sequenceIntensity = calculateSequenceIntensity(sequence)
-        intensityHistory.push(sequenceIntensity)
+        // Calculate intensity (from pressure)
+        val intensity = calculateIntensity(allFeatures)
 
-        // Update style
-        val currentStyle = calculateCurrentStyle()
-        styleHistory.push(currentStyle)
+        // Calculate precision (from tap consistency)
+        val precision = calculatePrecision(allFeatures)
 
-        updateProfile()
-        updateStability(currentStyle)
-    }
+        // Calculate tempo (from tap rate)
+        val tempo = calculateTempo(allFeatures)
 
-    /**
-     * Add raw intensity and style values directly.
-     */
-    fun addRawValues(intensity: Float, style: TouchStyle) {
-        intensityHistory.push(intensity.coerceIn(0f, 1f))
-        styleHistory.push(style)
-        updateProfile()
-        updateStability(style)
-    }
+        // Detect dominant hand (from spatial distribution)
+        val dominantHand = detectDominantHand(heatmaps)
 
-    private fun calculateSequenceIntensity(sequence: TouchSequence): Float {
-        // Combine pressure, velocity, and frequency into intensity score
-        val pressureScore = sequence.averagePressure.coerceIn(0f, 1f)
+        // Calculate consistency (how similar features are across sessions)
+        val consistency = calculateConsistency(allFeatures)
 
-        // Normalize velocity (2000 px/s considered high)
-        val velocityScore = (sequence.averageVelocity / 2000f).coerceIn(0f, 1f)
+        // Calculate coverage (screen usage)
+        val coverage = calculateCoverage(heatmaps)
 
-        // Duration factor (shorter = more intense for taps)
-        val durationFactor = when (sequence.gestureType) {
-            GestureType.TAP -> (1f - sequence.duration / 500f).coerceIn(0f, 1f)
-            else -> 0.5f
-        }
-
-        return (pressureScore * 0.4f + velocityScore * 0.3f + durationFactor * 0.3f)
-    }
-
-    private fun calculateCurrentStyle(): TouchStyle {
-        if (totalGestures == 0) return TouchStyle.UNKNOWN
-
-        val tapRatio = tapCount.toFloat() / totalGestures
-        val swipeRatio = swipeCount.toFloat() / totalGestures
-
-        return when {
-            tapRatio > 0.7f -> TouchStyle.TAPPER
-            swipeRatio > 0.7f -> TouchStyle.SWIPER
-            totalGestures < 5 -> TouchStyle.UNKNOWN
-            else -> TouchStyle.MIXED
-        }
-    }
-
-    private fun updateProfile() {
-        // Calculate aggregated intensity
-        val avgIntensity = if (intensityHistory.isEmpty) 0f else {
-            // Recent-weighted average
-            val items = intensityHistory.toList()
-            var totalWeight = 0f
-            var weightedSum = 0f
-
-            items.forEachIndexed { index, value ->
-                val exponent = (items.size - 1 - index).toDouble()
-                val weightDouble = Math.pow(config.recencyDecay.toDouble(), exponent)
-                val weight: Float = weightDouble.toFloat()
-                val product: Float = value * weight
-                weightedSum = weightedSum + product
-                totalWeight = totalWeight + weight
-            }
-
-            if (totalWeight > 0) weightedSum / totalWeight else 0f
-        }
-
-        // Calculate dominant style
-        val dominantStyle = if (styleHistory.isEmpty) TouchStyle.UNKNOWN else {
-            val styles = styleHistory.toList()
-            val counts = styles.groupingBy { it }.eachCount()
-            counts.maxByOrNull { it.value }?.key ?: TouchStyle.UNKNOWN
-        }
-
-        // Calculate style distribution
-        val styleDistribution = if (totalGestures > 0) {
-            mapOf(
-                TouchStyle.TAPPER to tapCount.toFloat() / totalGestures,
-                TouchStyle.SWIPER to swipeCount.toFloat() / totalGestures,
-                TouchStyle.MIXED to drawCount.toFloat() / totalGestures
-            )
-        } else {
-            emptyMap()
-        }
-
-        // Calculate average metrics
-        val avgPressure = if (pressureHistory.isEmpty) 0f else
-            pressureHistory.toList().average().toFloat()
-        val avgVelocity = if (velocityHistory.isEmpty) 0f else
-            velocityHistory.toList().average().toFloat()
-        val avgTpm = if (tpmHistory.isEmpty) 0f else
-            tpmHistory.toList().average().toFloat()
-
-        // Calculate consistency (how stable the intensity is)
-        val intensityVariance = if (intensityHistory.size > 1) {
-            val items = intensityHistory.toList()
-            val mean = items.average().toFloat()
-            items.map { (it - mean) * (it - mean) }.average().toFloat()
-        } else 0f
-        val consistency = (1f - kotlin.math.sqrt(intensityVariance.toDouble()).toFloat() * 2f)
-            .coerceIn(0f, 1f)
-
-        _profile.value = TouchDnaProfile(
-            intensity = avgIntensity,
-            style = dominantStyle,
-            styleDistribution = styleDistribution,
-            averagePressure = avgPressure,
-            averageVelocity = avgVelocity,
-            touchesPerMinute = avgTpm,
+        return TouchDna(
+            intensity = intensity,
+            precision = precision,
+            tempo = tempo,
+            dominantHand = dominantHand,
             consistency = consistency,
-            sampleCount = intensityHistory.size,
-            totalGestures = totalGestures,
-            tapCount = tapCount,
-            swipeCount = swipeCount,
-            drawCount = drawCount,
-            timestamp = System.currentTimeMillis()
+            coverage = coverage,
+            sessionCount = sessions.size
         )
     }
 
-    private fun updateStability(currentStyle: TouchStyle) {
-        if (currentStyle == lastStyle) {
-            styleStabilityCounter++
-        } else {
-            styleStabilityCounter = 1
-            lastStyle = currentStyle
+    /**
+     * Calculate intensity from pressure features.
+     * Uses TAP_PRESSURE_MEAN feature.
+     */
+    private fun calculateIntensity(features: List<FloatArray>): Float {
+        val pressures = features.mapNotNull { f ->
+            val pressure = f[TouchFeatureExtractor.TAP_PRESSURE_MEAN]
+            if (pressure > 0) pressure else null
+        }
+        return if (pressures.isNotEmpty()) {
+            pressures.average().toFloat().coerceIn(0f, 1f)
+        } else 0.5f
+    }
+
+    /**
+     * Calculate precision from tap consistency.
+     * Uses TAP_DURATION_STD and TAP_PRESSURE_STD (lower = more precise).
+     */
+    private fun calculatePrecision(features: List<FloatArray>): Float {
+        val durationStds = features.map { it[TouchFeatureExtractor.TAP_DURATION_STD] }
+        val pressureStds = features.map { it[TouchFeatureExtractor.TAP_PRESSURE_STD] }
+
+        // Lower std = more precise, so invert
+        val avgDurationStd = durationStds.average().toFloat()
+        val avgPressureStd = pressureStds.average().toFloat()
+
+        // Normalize (assuming typical std ranges)
+        val durationPrecision = (1f - (avgDurationStd / 200f).coerceIn(0f, 1f))
+        val pressurePrecision = (1f - (avgPressureStd / 0.3f).coerceIn(0f, 1f))
+
+        return ((durationPrecision + pressurePrecision) / 2f).coerceIn(0f, 1f)
+    }
+
+    /**
+     * Calculate tempo from tap rate.
+     * Uses TAP_RATE_PER_MIN feature.
+     */
+    private fun calculateTempo(features: List<FloatArray>): Float {
+        val rates = features.map { it[TouchFeatureExtractor.TAP_RATE_PER_MIN] }
+        val avgRate = rates.average().toFloat()
+
+        // Normalize (0-200 taps/min range mapped to 0-1)
+        return (avgRate / 200f).coerceIn(0f, 1f)
+    }
+
+    /**
+     * Detect dominant hand from heatmap distribution.
+     * Compares left vs right side activity.
+     */
+    private fun detectDominantHand(heatmaps: List<FloatArray>): HandPreference {
+        if (heatmaps.isEmpty()) return HandPreference.UNKNOWN
+
+        val combined = heatmapGenerator.combine(heatmaps)
+        val stats = heatmapGenerator.getStats(combined)
+
+        // Calculate left vs right activity
+        var leftSum = 0f
+        var rightSum = 0f
+
+        for (row in 0 until TouchHeatmapGenerator.GRID_ROWS) {
+            // Left side: columns 0-4
+            for (col in 0 until 5) {
+                leftSum += heatmapGenerator.getValue(combined, row, col)
+            }
+            // Right side: columns 5-9
+            for (col in 5 until TouchHeatmapGenerator.GRID_COLS) {
+                rightSum += heatmapGenerator.getValue(combined, row, col)
+            }
         }
 
-        _isStable.value = styleStabilityCounter >= config.stabilityThreshold
-    }
+        val total = leftSum + rightSum
+        if (total < 0.1f) return HandPreference.UNKNOWN
 
-    /**
-     * Get stable style if pattern is stable.
-     */
-    fun getStableStyle(): TouchStyle? {
-        return if (_isStable.value) lastStyle else null
-    }
+        val leftRatio = leftSum / total
+        val rightRatio = rightSum / total
 
-    /**
-     * Get intensity level as category.
-     */
-    fun getIntensityLevel(): IntensityLevel {
-        val intensity = _profile.value.intensity
         return when {
-            intensity < 0.25f -> IntensityLevel.LOW
-            intensity < 0.5f -> IntensityLevel.MEDIUM
-            intensity < 0.75f -> IntensityLevel.HIGH
-            else -> IntensityLevel.VERY_HIGH
+            leftRatio > 0.6f -> HandPreference.LEFT
+            rightRatio > 0.6f -> HandPreference.RIGHT
+            kotlin.math.abs(leftRatio - rightRatio) < 0.15f -> HandPreference.AMBIDEXTROUS
+            else -> HandPreference.UNKNOWN
         }
     }
 
     /**
-     * Reset all data.
+     * Calculate consistency across sessions.
+     * Lower variance = higher consistency.
      */
-    fun reset() {
-        intensityHistory.clear()
-        styleHistory.clear()
-        pressureHistory.clear()
-        velocityHistory.clear()
-        tpmHistory.clear()
-        tapCount = 0
-        swipeCount = 0
-        drawCount = 0
-        totalGestures = 0
-        _profile.value = TouchDnaProfile()
-        _isStable.value = false
-        lastStyle = null
-        styleStabilityCounter = 0
+    private fun calculateConsistency(features: List<FloatArray>): Float {
+        if (features.size < 2) return 0f
+
+        // Calculate variance for key features
+        val keyFeatureIndices = listOf(
+            TouchFeatureExtractor.TAP_RATE_PER_MIN,
+            TouchFeatureExtractor.TAP_PRESSURE_MEAN,
+            TouchFeatureExtractor.SWIPE_VELOCITY_MEAN,
+            TouchFeatureExtractor.CENTER_OF_MASS_X,
+            TouchFeatureExtractor.CENTER_OF_MASS_Y
+        )
+
+        var totalConsistency = 0f
+
+        for (featureIdx in keyFeatureIndices) {
+            val values = features.map { it[featureIdx] }
+            val mean = values.average().toFloat()
+            if (mean > 0) {
+                val variance = values.map { (it - mean) * (it - mean) }.average().toFloat()
+                val cv = kotlin.math.sqrt(variance) / mean  // Coefficient of variation
+                // Lower CV = more consistent
+                totalConsistency += (1f - cv.coerceIn(0f, 1f))
+            }
+        }
+
+        return (totalConsistency / keyFeatureIndices.size).coerceIn(0f, 1f)
     }
 
     /**
-     * Check if enough data for meaningful profile.
+     * Calculate screen coverage from heatmaps.
      */
-    fun hasEnoughData(): Boolean = intensityHistory.size >= config.minSamplesForProfile
-}
+    private fun calculateCoverage(heatmaps: List<FloatArray>): Float {
+        if (heatmaps.isEmpty()) return 0f
 
-/**
- * Configuration for Touch DNA.
- */
-data class TouchDnaConfig(
-    val historySize: Int = 20,
-    val stabilityThreshold: Int = 5,
-    val minSamplesForProfile: Int = 5,
-    val recencyDecay: Float = 0.85f
-)
-
-/**
- * Touch DNA behavioral profile.
- */
-data class TouchDnaProfile(
-    val intensity: Float = 0f,           // 0-1 overall touch intensity
-    val style: TouchStyle = TouchStyle.UNKNOWN,
-    val styleDistribution: Map<TouchStyle, Float> = emptyMap(),
-    val averagePressure: Float = 0f,
-    val averageVelocity: Float = 0f,
-    val touchesPerMinute: Float = 0f,
-    val consistency: Float = 0f,         // 0-1 how consistent the patterns are
-    val sampleCount: Int = 0,
-    val totalGestures: Int = 0,
-    val tapCount: Int = 0,
-    val swipeCount: Int = 0,
-    val drawCount: Int = 0,
-    val timestamp: Long = 0
-) {
-    val intensityFormatted: String get() = String.format("%.0f%%", intensity * 100)
-    val pressureFormatted: String get() = String.format("%.2f", averagePressure)
-    val velocityFormatted: String get() = String.format("%.0f px/s", averageVelocity)
-    val tpmFormatted: String get() = String.format("%.1f", touchesPerMinute)
-    val consistencyFormatted: String get() = String.format("%.0f%%", consistency * 100)
-
-    val styleDescription: String get() = when (style) {
-        TouchStyle.TAPPER -> "Tapper - prefers taps"
-        TouchStyle.SWIPER -> "Swiper - prefers swipes"
-        TouchStyle.MIXED -> "Mixed - uses both"
-        TouchStyle.UNKNOWN -> "Unknown"
+        val combined = heatmapGenerator.combine(heatmaps)
+        val stats = heatmapGenerator.getStats(combined)
+        return stats.coverage
     }
 
-    val isValid: Boolean get() = sampleCount > 0
+    /**
+     * Compare two DNA profiles for similarity (0-1).
+     */
+    fun compareDna(dna1: TouchDna, dna2: TouchDna): Float {
+        val intensityDiff = kotlin.math.abs(dna1.intensity - dna2.intensity)
+        val precisionDiff = kotlin.math.abs(dna1.precision - dna2.precision)
+        val tempoDiff = kotlin.math.abs(dna1.tempo - dna2.tempo)
+        val handMatch = if (dna1.dominantHand == dna2.dominantHand) 0f else 0.25f
+
+        val avgDiff = (intensityDiff + precisionDiff + tempoDiff + handMatch) / 4f
+        return (1f - avgDiff).coerceIn(0f, 1f)
+    }
 }
 
 /**
- * Intensity levels.
+ * Repository for Touch DNA operations.
  */
-enum class IntensityLevel(val displayName: String) {
-    LOW("Light"),
-    MEDIUM("Moderate"),
-    HIGH("Firm"),
-    VERY_HIGH("Intense")
+class TouchDnaRepository(
+    private val touchRepository: TouchRepository,
+    private val dnaGenerator: TouchDnaGenerator = TouchDnaGenerator()
+) {
+    /**
+     * Generate DNA from all stored sessions.
+     */
+    suspend fun generateDna(): TouchDna {
+        val sessions = touchRepository.getAllSessions()
+        return dnaGenerator.generate(sessions)
+    }
+
+    /**
+     * Generate DNA for a specific label.
+     */
+    suspend fun generateDnaForLabel(label: String): TouchDna {
+        val sessions = touchRepository.getSessionsByLabelList(label)
+        return dnaGenerator.generate(sessions)
+    }
+
+    /**
+     * Identify user based on touch pattern.
+     * Returns label with highest similarity.
+     */
+    suspend fun identifyUser(newSession: TouchSession): IdentificationResult {
+        val labels = touchRepository.getAllLabels()
+        if (labels.isEmpty()) {
+            return IdentificationResult(null, 0f, emptyMap())
+        }
+
+        val sessionDna = dnaGenerator.generate(listOf(newSession))
+        val similarities = mutableMapOf<String, Float>()
+
+        for (label in labels) {
+            val labelDna = generateDnaForLabel(label)
+            val similarity = dnaGenerator.compareDna(sessionDna, labelDna)
+            similarities[label] = similarity
+        }
+
+        val bestMatch = similarities.maxByOrNull { it.value }
+        return IdentificationResult(
+            bestMatch = bestMatch?.key,
+            confidence = bestMatch?.value ?: 0f,
+            similarities = similarities
+        )
+    }
 }
+
+/**
+ * Result of user identification.
+ */
+data class IdentificationResult(
+    val bestMatch: String?,
+    val confidence: Float,
+    val similarities: Map<String, Float>
+)

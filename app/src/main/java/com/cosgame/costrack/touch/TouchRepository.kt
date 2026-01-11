@@ -55,8 +55,20 @@ class TouchRepository(private val dao: TouchSessionDao) {
      * Get labeled sessions as list for training.
      */
     suspend fun getLabeledSessionsForTraining(): List<TouchSession> {
-        var sessions = emptyList<TouchSession>()
-        labeledSessions.collect { sessions = it }
-        return sessions
+        return dao.getLabeledSessionsList()
+    }
+
+    /**
+     * Get all sessions as list.
+     */
+    suspend fun getAllSessions(): List<TouchSession> {
+        return dao.getAllSessionsList()
+    }
+
+    /**
+     * Get sessions by label as list.
+     */
+    suspend fun getSessionsByLabelList(label: String): List<TouchSession> {
+        return dao.getSessionsByLabelList(label)
     }
 }
