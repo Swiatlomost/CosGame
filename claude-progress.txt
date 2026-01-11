@@ -410,3 +410,39 @@ Summary of all features:
 Total commits: 10
 Total test cases: 80+
 Architecture: MVVM with Jetpack Compose
+
+[2026-01-11] Session 11: Mission System - Phase 1 (Room Database)
+-----------------------------------------------------------------
+Feature: missions_training_data
+Status: COMPLETED
+
+Implementation:
+- Room database for storing labeled training data
+- ActivityType enum: WALKING, RUNNING, SITTING, STANDING, LAYING
+- TrainingSample entity with accelerometer, gyroscope, magnitude, timestamp
+- TrainingSession entity for completed missions
+- TrainingDao with comprehensive queries and Flow support
+- TrainingRepository singleton for data access
+- Type converters for ActivityType enum
+
+Files created:
+- app/src/main/java/com/cosgame/costrack/training/ActivityType.kt
+- app/src/main/java/com/cosgame/costrack/training/TrainingSample.kt
+- app/src/main/java/com/cosgame/costrack/training/TrainingSession.kt
+- app/src/main/java/com/cosgame/costrack/training/TrainingDao.kt
+- app/src/main/java/com/cosgame/costrack/training/TrainingDatabase.kt
+- app/src/main/java/com/cosgame/costrack/training/TrainingRepository.kt
+
+Dependencies added:
+- androidx.room:room-runtime:2.6.1
+- androidx.room:room-ktx:2.6.1
+- com.google.devtools.ksp (Room annotation processor)
+
+Key DAO methods:
+- insertSample/insertSamples: Add training data
+- getSamplesByActivity: Get samples for specific activity
+- getCountByActivity/getCountByActivityFlow: Sample statistics
+- getSampleCountsPerActivity: Overview for all activities
+- hasMinimumSamplesForTraining: Check training readiness
+
+Next: Phase 2 - Missions UI (MissionsScreen, ActiveMissionScreen)
