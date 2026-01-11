@@ -446,3 +446,44 @@ Key DAO methods:
 - hasMinimumSamplesForTraining: Check training readiness
 
 Next: Phase 2 - Missions UI (MissionsScreen, ActiveMissionScreen)
+
+[2026-01-11] Session 11: Mission System - Phase 2 (Missions UI)
+---------------------------------------------------------------
+Feature: missions_ui
+Status: COMPLETED
+
+Implementation:
+- Mission data class with id, activityType, duration, icon, name
+- Predefined missions: Walk 60s, Run 30s, Sit 60s, Stand 60s, Lay 30s
+- MissionsViewModel with sample counts and completion tracking
+- MissionsScreen with:
+  - Training readiness card showing progress per activity
+  - Mission cards with progress bars and completion counts
+  - Clear all data with confirmation dialog
+- ActiveMissionViewModel managing mission execution:
+  - 3-2-1 countdown before start
+  - Real-time sensor data collection at 50Hz
+  - Auto-labeling with mission's activity type
+  - Session tracking and sample persistence
+- ActiveMissionScreen with animated phases:
+  - READY: Instructions and start button
+  - COUNTDOWN: Animated 3-2-1 countdown
+  - COLLECTING: Timer, progress, live sample count
+  - COMPLETE: Success celebration with stats
+
+Files created:
+- app/src/main/java/com/cosgame/costrack/ui/missions/Mission.kt
+- app/src/main/java/com/cosgame/costrack/ui/missions/MissionsViewModel.kt
+- app/src/main/java/com/cosgame/costrack/ui/missions/MissionsScreen.kt
+- app/src/main/java/com/cosgame/costrack/ui/missions/ActiveMissionViewModel.kt
+- app/src/main/java/com/cosgame/costrack/ui/missions/ActiveMissionScreen.kt
+
+UI Components:
+- TrainingReadinessCard: Shows progress for all activities
+- MissionCard: Individual mission with icon, progress, completion count
+- ReadyPhase: Mission instructions before starting
+- CountdownPhase: Animated countdown
+- CollectingPhase: Live data collection with timer
+- CompletePhase: Success screen with sample count
+
+Next: Phase 3 - PersonalHarTrainer + TrainingScreen
