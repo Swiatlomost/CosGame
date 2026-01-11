@@ -23,6 +23,7 @@ fun MissionsScreen(
     viewModel: MissionsViewModel = viewModel(),
     onStartMission: (Mission) -> Unit,
     onGoToTraining: () -> Unit,
+    onGoToTest: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -50,7 +51,8 @@ fun MissionsScreen(
             item {
                 TrainingReadinessCard(
                     uiState = uiState,
-                    onGoToTraining = onGoToTraining
+                    onGoToTraining = onGoToTraining,
+                    onGoToTest = onGoToTest
                 )
             }
 
@@ -119,7 +121,8 @@ fun MissionsScreen(
 @Composable
 private fun TrainingReadinessCard(
     uiState: MissionsUiState,
-    onGoToTraining: () -> Unit
+    onGoToTraining: () -> Unit,
+    onGoToTest: () -> Unit
 ) {
     val isReady = uiState.isReadyForTraining()
 
@@ -198,11 +201,22 @@ private fun TrainingReadinessCard(
 
             if (isReady) {
                 Spacer(modifier = Modifier.height(12.dp))
-                Button(
-                    onClick = onGoToTraining,
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Train My Model")
+                    Button(
+                        onClick = onGoToTraining,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Train Model")
+                    }
+                    OutlinedButton(
+                        onClick = onGoToTest,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Test Model")
+                    }
                 }
             }
         }

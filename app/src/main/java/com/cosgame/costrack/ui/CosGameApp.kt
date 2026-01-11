@@ -6,12 +6,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.cosgame.costrack.ui.classifiers.ClassifiersScreen
 import com.cosgame.costrack.ui.home.HomeScreen
+import com.cosgame.costrack.ui.missions.*
 import com.cosgame.costrack.ui.navigation.Screen
 import com.cosgame.costrack.ui.sensors.SensorsScreen
 import com.cosgame.costrack.ui.settings.SettingsScreen
@@ -86,6 +89,52 @@ fun CosGameApp() {
 
                 composable(Screen.Sensors.route) {
                     SensorsScreen()
+                }
+
+                composable(Screen.Missions.route) {
+                    MissionsScreen(
+                        onStartMission = { mission ->
+                            navController.navigate(Screen.activeMissionRoute(mission.id))
+                        },
+                        onGoToTraining = {
+                            navController.navigate(Screen.TRAINING)
+                        },
+                        onGoToTest = {
+                            navController.navigate(Screen.TEST)
+                        }
+                    )
+                }
+
+                composable(
+                    route = Screen.ACTIVE_MISSION,
+                    arguments = listOf(navArgument("missionId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val missionId = backStackEntry.arguments?.getString("missionId") ?: ""
+                    ActiveMissionScreen(
+                        missionId = missionId,
+                        onMissionComplete = {
+                            navController.popBackStack()
+                        },
+                        onCancel = {
+                            navController.popBackStack()
+                        }
+                    )
+                }
+
+                composable(Screen.TRAINING) {
+                    TrainingScreen(
+                        onBack = {
+                            navController.popBackStack()
+                        }
+                    )
+                }
+
+                composable(Screen.TEST) {
+                    TestScreen(
+                        onBack = {
+                            navController.popBackStack()
+                        }
+                    )
                 }
 
                 composable(Screen.Classifiers.route) {
