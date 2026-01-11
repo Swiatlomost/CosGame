@@ -17,6 +17,7 @@ import com.cosgame.costrack.ui.classifiers.ClassifiersScreen
 import com.cosgame.costrack.ui.home.HomeScreen
 import com.cosgame.costrack.ui.missions.*
 import com.cosgame.costrack.ui.navigation.Screen
+import com.cosgame.costrack.ui.touch.TouchMissionsScreen
 import com.cosgame.costrack.ui.settings.SettingsScreen
 import com.cosgame.costrack.ui.theme.CosGameTheme
 
@@ -185,7 +186,13 @@ fun CosGameApp() {
                     SettingsScreen()
                 }
 
-                // Touch Missions will be added in Phase 3
+                composable(Screen.TOUCH_MISSIONS) {
+                    TouchMissionsScreen(
+                        onBack = {
+                            navController.popBackStack()
+                        }
+                    )
+                }
             }
         }
     }
