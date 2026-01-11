@@ -56,12 +56,15 @@ sealed class Screen(
     )
 
     companion object {
-        val bottomNavItems = listOf(Home, Sensors, Missions, Classifiers, Settings)
+        val bottomNavItems = listOf(Home, Missions, Classifiers, Settings)
 
         // Non-bottom-nav routes
         const val ACTIVE_MISSION = "active_mission/{missionId}"
         const val TRAINING = "training"
         const val TEST = "test"
+        const val DATA_BROWSER = "data_browser"
+        const val ACTIVITY_DATA_BROWSER = "activity_data_browser"
+        const val TOUCH_LAB = "touch_lab"
 
         fun activeMissionRoute(missionId: String) = "active_mission/$missionId"
     }

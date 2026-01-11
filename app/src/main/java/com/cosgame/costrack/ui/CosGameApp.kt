@@ -12,13 +12,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.cosgame.costrack.ui.classifiers.ActivityDataBrowserScreen
 import com.cosgame.costrack.ui.classifiers.ClassifiersScreen
 import com.cosgame.costrack.ui.home.HomeScreen
 import com.cosgame.costrack.ui.missions.*
 import com.cosgame.costrack.ui.navigation.Screen
-import com.cosgame.costrack.ui.sensors.SensorsScreen
 import com.cosgame.costrack.ui.settings.SettingsScreen
 import com.cosgame.costrack.ui.theme.CosGameTheme
+import com.cosgame.costrack.ui.touch.TouchLabScreen
 
 /**
  * Main app composable with navigation.
@@ -51,16 +52,34 @@ fun CosGameApp() {
                             label = { Text(screen.title) },
                             selected = selected,
                             onClick = {
-                                navController.navigate(screen.route) {
-                                    // Pop up to the start destination to avoid
-                                    // building up a large stack of destinations
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
+                                // Get current route to check if we're on a nested screen
+                                val currentRoute = currentDestination?.route
+                                val isOnNestedScreen = currentRoute in listOf(
+                                    Screen.ACTIVE_MISSION,
+                                    Screen.TRAINING,
+                                    Screen.TEST,
+                                    Screen.DATA_BROWSER,
+                                    Screen.ACTIVITY_DATA_BROWSER,
+                                    Screen.TOUCH_LAB
+                                ) || currentRoute?.startsWith("active_mission/") == true
+
+                                if (isOnNestedScreen) {
+                                    // From nested screens, pop back to the target
+                                    navController.navigate(screen.route) {
+                                        popUpTo(Screen.Home.route) {
+                                            inclusive = false
+                                        }
+                                        launchSingleTop = true
                                     }
-                                    // Avoid multiple copies of the same destination
-                                    launchSingleTop = true
-                                    // Restore state when reselecting a previously selected item
-                                    restoreState = true
+                                } else {
+                                    // Normal bottom nav behavior
+                                    navController.navigate(screen.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = screen.route != Screen.Home.route
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = screen.route != Screen.Home.route
+                                    }
                                 }
                             }
                         )
@@ -87,10 +106,6 @@ fun CosGameApp() {
                     )
                 }
 
-                composable(Screen.Sensors.route) {
-                    SensorsScreen()
-                }
-
                 composable(Screen.Missions.route) {
                     MissionsScreen(
                         onStartMission = { mission ->
@@ -101,6 +116,12 @@ fun CosGameApp() {
                         },
                         onGoToTest = {
                             navController.navigate(Screen.TEST)
+                        },
+                        onGoToDataBrowser = {
+                            navController.navigate(Screen.DATA_BROWSER)
+                        },
+                        onGoToTouchLab = {
+                            navController.navigate(Screen.TOUCH_LAB)
                         }
                     )
                 }
@@ -137,12 +158,40 @@ fun CosGameApp() {
                     )
                 }
 
+                composable(Screen.DATA_BROWSER) {
+                    DataBrowserScreen(
+                        onBack = {
+                            navController.popBackStack()
+                        }
+                    )
+                }
+
                 composable(Screen.Classifiers.route) {
-                    ClassifiersScreen()
+                    ClassifiersScreen(
+                        onGoToActivityData = {
+                            navController.navigate(Screen.ACTIVITY_DATA_BROWSER)
+                        }
+                    )
+                }
+
+                composable(Screen.ACTIVITY_DATA_BROWSER) {
+                    ActivityDataBrowserScreen(
+                        onBack = {
+                            navController.popBackStack()
+                        }
+                    )
                 }
 
                 composable(Screen.Settings.route) {
                     SettingsScreen()
+                }
+
+                composable(Screen.TOUCH_LAB) {
+                    TouchLabScreen(
+                        onBack = {
+                            navController.popBackStack()
+                        }
+                    )
                 }
             }
         }

@@ -130,10 +130,12 @@ class TouchDna(
             var weightedSum = 0f
 
             items.forEachIndexed { index, value ->
-                val weight = kotlin.math.pow(config.recencyDecay.toDouble(),
-                    (items.size - 1 - index).toDouble()).toFloat()
-                weightedSum += value * weight
-                totalWeight += weight
+                val exponent = (items.size - 1 - index).toDouble()
+                val weightDouble = Math.pow(config.recencyDecay.toDouble(), exponent)
+                val weight: Float = weightDouble.toFloat()
+                val product: Float = value * weight
+                weightedSum = weightedSum + product
+                totalWeight = totalWeight + weight
             }
 
             if (totalWeight > 0) weightedSum / totalWeight else 0f

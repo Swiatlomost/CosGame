@@ -24,6 +24,8 @@ fun MissionsScreen(
     onStartMission: (Mission) -> Unit,
     onGoToTraining: () -> Unit,
     onGoToTest: () -> Unit = {},
+    onGoToDataBrowser: () -> Unit = {},
+    onGoToTouchLab: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -52,7 +54,8 @@ fun MissionsScreen(
                 TrainingReadinessCard(
                     uiState = uiState,
                     onGoToTraining = onGoToTraining,
-                    onGoToTest = onGoToTest
+                    onGoToTest = onGoToTest,
+                    onGoToDataBrowser = onGoToDataBrowser
                 )
             }
 
@@ -74,6 +77,18 @@ fun MissionsScreen(
                     progress = uiState.getProgress(mission),
                     onClick = { onStartMission(mission) }
                 )
+            }
+
+            // Touch Lab section
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Touch Training",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                TouchLabCard(onClick = onGoToTouchLab)
             }
 
             // Clear data button (at bottom)
@@ -122,7 +137,8 @@ fun MissionsScreen(
 private fun TrainingReadinessCard(
     uiState: MissionsUiState,
     onGoToTraining: () -> Unit,
-    onGoToTest: () -> Unit
+    onGoToTest: () -> Unit,
+    onGoToDataBrowser: () -> Unit
 ) {
     val isReady = uiState.isReadyForTraining()
 
@@ -140,31 +156,42 @@ private fun TrainingReadinessCard(
                 .padding(16.dp)
         ) {
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    text = if (isReady) "✅" else "📊",
-                    fontSize = 24.sp
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = if (isReady) "Ready to Train!" else "Collect More Data",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        text = if (isReady) "✅" else "📊",
+                        fontSize = 24.sp
                     )
-                    Text(
-                        text = "${uiState.totalSamples} total samples collected",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = if (isReady) "Ready to Train!" else "Collect More Data",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "${uiState.totalSamples} total samples collected",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                // View Data button
+                if (uiState.totalSamples > 0) {
+                    TextButton(onClick = onGoToDataBrowser) {
+                        Text("View Data")
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
             // Progress per activity
-            ActivityType.values().forEach { activityType ->
+            ActivityType.entries.forEach { activityType ->
                 val count = uiState.getSampleCount(activityType)
                 val progress = (count.toFloat() / 100).coerceIn(0f, 1f)
 
@@ -288,6 +315,59 @@ private fun MissionCard(
                     text = "times",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TouchLabCard(
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "👆",
+                fontSize = 40.sp
+            )
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Touch Lab",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Train touch gestures: taps, swipes, circles",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                )
+            }
+
+            Surface(
+                color = MaterialTheme.colorScheme.primary,
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    text = "NEW",
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onPrimary
                 )
             }
         }
