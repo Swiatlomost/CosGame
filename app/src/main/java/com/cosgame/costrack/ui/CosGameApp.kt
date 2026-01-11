@@ -16,6 +16,7 @@ import com.cosgame.costrack.ui.classifiers.ActivityDataBrowserScreen
 import com.cosgame.costrack.ui.classifiers.ClassifiersScreen
 import com.cosgame.costrack.ui.home.HomeScreen
 import com.cosgame.costrack.ui.learn.LearnScreen
+import com.cosgame.costrack.ui.learn.CategoriesScreen
 import com.cosgame.costrack.ui.missions.*
 import com.cosgame.costrack.ui.navigation.Screen
 import com.cosgame.costrack.ui.touch.TouchMissionsScreen
@@ -61,7 +62,8 @@ fun CosGameApp() {
                                     Screen.DATA_BROWSER,
                                     Screen.ACTIVITY_DATA_BROWSER,
                                     Screen.TRAIN_TOUCH,
-                                    Screen.TRAIN_MOVEMENT
+                                    Screen.TRAIN_MOVEMENT,
+                                    Screen.CATEGORIES
                                 ) || currentRoute?.startsWith("active_mission/") == true
 
                                 if (isOnNestedScreen) {
@@ -115,7 +117,16 @@ fun CosGameApp() {
                             navController.navigate(Screen.TRAIN_MOVEMENT)
                         },
                         onManageCategories = {
-                            // TODO: Navigate to categories screen
+                            navController.navigate(Screen.CATEGORIES)
+                        }
+                    )
+                }
+
+                // Categories management
+                composable(Screen.CATEGORIES) {
+                    CategoriesScreen(
+                        onBack = {
+                            navController.popBackStack()
                         }
                     )
                 }

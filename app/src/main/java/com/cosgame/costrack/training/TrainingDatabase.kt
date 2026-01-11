@@ -11,6 +11,8 @@ import com.cosgame.costrack.activitylog.ActivityLogDao
 import com.cosgame.costrack.activitylog.ActivitySession
 import com.cosgame.costrack.touch.TouchSession
 import com.cosgame.costrack.touch.TouchSessionDao
+import com.cosgame.costrack.learn.Category
+import com.cosgame.costrack.learn.CategoryDao
 
 /**
  * Type converters for Room database.
@@ -32,9 +34,10 @@ class Converters {
         TrainingSession::class,
         ActivityLog::class,
         ActivitySession::class,
-        TouchSession::class
+        TouchSession::class,
+        Category::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -45,6 +48,8 @@ abstract class TrainingDatabase : RoomDatabase() {
     abstract fun activityLogDao(): ActivityLogDao
 
     abstract fun touchSessionDao(): TouchSessionDao
+
+    abstract fun categoryDao(): CategoryDao
 
     companion object {
         private const val DATABASE_NAME = "training_database"
