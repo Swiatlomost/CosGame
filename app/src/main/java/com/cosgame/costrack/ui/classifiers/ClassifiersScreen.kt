@@ -1,8 +1,13 @@
 package com.cosgame.costrack.ui.classifiers
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -10,8 +15,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
@@ -106,6 +113,22 @@ fun ClassifiersScreen(
                             sampleCount = uiState.aggregatedResult?.sampleCount ?: 0
                         )
                     }
+
+                    // Debug logs - Classification
+                    DebugLogsCard(
+                        title = "Classification Logs",
+                        logs = uiState.debugLogs,
+                        onCopy = { viewModel.getLogsAsText() },
+                        onClear = viewModel::clearLogs
+                    )
+
+                    // Debug logs - Raw Sensors
+                    DebugLogsCard(
+                        title = "Raw Sensor Data",
+                        logs = uiState.sensorLogs,
+                        onCopy = { viewModel.getSensorLogsAsText() },
+                        onClear = viewModel::clearSensorLogs
+                    )
                 }
             }
 
@@ -197,7 +220,7 @@ private fun BufferCollectingCard(progress: Float) {
             )
             Spacer(modifier = Modifier.height(8.dp))
             LinearProgressIndicator(
-                progress = { progress },
+                progress = progress,
                 modifier = Modifier.fillMaxWidth()
             )
             Text(
@@ -269,7 +292,7 @@ private fun ActivityDisplayCard(
             Text(
                 text = activity.toIcon(),
                 fontSize = 64.sp,
-                modifier = Modifier.graphicsLayer { this.alpha = alpha }
+                modifier = Modifier.alpha(alpha)
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -290,7 +313,7 @@ private fun ActivityDisplayCard(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 LinearProgressIndicator(
-                    progress = { confidence },
+                    progress = confidence,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(8.dp)
@@ -358,7 +381,7 @@ private fun ProbabilityRow(label: String, probability: Float) {
             )
         }
         LinearProgressIndicator(
-            progress = { probability },
+            progress = probability,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(4.dp)
@@ -449,6 +472,90 @@ private fun PlaceholderCard() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
+        }
+    }
+}
+
+@Composable
+private fun DebugLogsCard(
+    title: String = "Debug Logs",
+    logs: List<String>,
+    onCopy: () -> String,
+    onClear: () -> Unit
+) {
+    val context = LocalContext.current
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "$title (${logs.size})",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Row {
+                    TextButton(onClick = {
+                        val logsText = onCopy()
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        clipboard.setPrimaryClip(ClipData.newPlainText("HAR Logs", logsText))
+                        Toast.makeText(context, "Logs copied!", Toast.LENGTH_SHORT).show()
+                    }) {
+                        Text("Copy")
+                    }
+                    TextButton(onClick = onClear) {
+                        Text("Clear")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Log entries
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 200.dp)
+                        .verticalScroll(rememberScrollState())
+                        .padding(8.dp)
+                ) {
+                    if (logs.isEmpty()) {
+                        Text(
+                            text = "No logs yet. Start classification to see results.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        logs.asReversed().forEach { log ->
+                            Text(
+                                text = log,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState())
+                                    .padding(vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

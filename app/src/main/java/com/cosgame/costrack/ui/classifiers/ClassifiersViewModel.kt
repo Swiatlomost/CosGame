@@ -140,13 +140,77 @@ class ClassifiersViewModel(application: Application) : AndroidViewModel(applicat
             gyroscopeManager.ringBuffer
         )
 
+        // Log raw sensor data
+        val sensorEntry = formatSensorEntry()
+        val updatedSensorLogs = (_uiState.value.sensorLogs + sensorEntry).takeLast(30)
+
         result?.let {
+            // Add debug log entry
+            val logEntry = formatLogEntry(it)
+            val updatedLogs = (_uiState.value.debugLogs + logEntry).takeLast(50)
+
             _uiState.value = _uiState.value.copy(
                 lastClassificationResult = it,
-                classificationCount = _uiState.value.classificationCount + 1
+                classificationCount = _uiState.value.classificationCount + 1,
+                debugLogs = updatedLogs,
+                sensorLogs = updatedSensorLogs
             )
             dnaAggregator.addResult(it)
+        } ?: run {
+            _uiState.value = _uiState.value.copy(sensorLogs = updatedSensorLogs)
         }
+    }
+
+    private fun formatSensorEntry(): String {
+        val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
+            .format(java.util.Date())
+        val acc = accelerometerManager.latestReading.value
+        val gyr = gyroscopeManager.latestReading.value
+        val accStr = acc?.let { "A[%.1f,%.1f,%.1f]".format(it.x, it.y, it.z) } ?: "A[--]"
+        val gyrStr = gyr?.let { "G[%.1f,%.1f,%.1f]".format(it.x, it.y, it.z) } ?: "G[--]"
+        return "[$time] $accStr $gyrStr"
+    }
+
+    private fun formatLogEntry(result: ClassificationResult): String {
+        val time = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US)
+            .format(java.util.Date())
+        val probs = result.allProbabilities.entries
+            .sortedByDescending { it.value }
+            .joinToString(" ") {
+                val shortLabel = when(it.key.uppercase()) {
+                    "WALKING" -> "Wlk"
+                    "WALKING_UPSTAIRS" -> "Up"
+                    "WALKING_DOWNSTAIRS" -> "Dn"
+                    "SITTING" -> "Sit"
+                    "STANDING" -> "Std"
+                    "LAYING" -> "Lay"
+                    else -> it.key.take(3)
+                }
+                "$shortLabel:${(it.value * 100).toInt()}%"
+            }
+
+        // Add debug info
+        val debugInfo = result.debugInfo ?: ""
+
+        return "[$time] $debugInfo ${result.label}(${(result.confidence * 100).toInt()}%) $probs"
+    }
+
+    private fun f(v: Float): String = "%.1f".format(v)
+
+    fun clearLogs() {
+        _uiState.value = _uiState.value.copy(debugLogs = emptyList())
+    }
+
+    fun getLogsAsText(): String {
+        return _uiState.value.debugLogs.joinToString("\n")
+    }
+
+    fun clearSensorLogs() {
+        _uiState.value = _uiState.value.copy(sensorLogs = emptyList())
+    }
+
+    fun getSensorLogsAsText(): String {
+        return _uiState.value.sensorLogs.joinToString("\n")
     }
 
     fun resetAggregator() {
@@ -188,7 +252,11 @@ data class ClassifiersUiState(
     val classificationCount: Long = 0,
 
     // Error state
-    val error: String? = null
+    val error: String? = null,
+
+    // Debug logs (dev mode)
+    val debugLogs: List<String> = emptyList(),
+    val sensorLogs: List<String> = emptyList()
 ) {
     val isDevMode: Boolean get() = appMode == AppMode.DEVELOPER
     val confidence: Float get() = aggregatedResult?.confidence ?: 0f

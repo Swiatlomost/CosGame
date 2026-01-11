@@ -32,11 +32,13 @@ fun ActiveMissionScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    // Initialize mission
+    // Initialize mission only if not already set (survives rotation)
     LaunchedEffect(missionId) {
-        val mission = Missions.getById(missionId)
-        if (mission != null) {
-            viewModel.setMission(mission)
+        if (viewModel.uiState.value.mission == null) {
+            val mission = Missions.getById(missionId)
+            if (mission != null) {
+                viewModel.setMission(mission)
+            }
         }
     }
 

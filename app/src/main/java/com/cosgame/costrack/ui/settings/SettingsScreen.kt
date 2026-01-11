@@ -88,7 +88,7 @@ fun SettingsScreen(
                         onCheckedChange = { viewModel.toggleDevMode() }
                     )
 
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    Divider(modifier = Modifier.padding(vertical = 8.dp))
 
                     // Lock dev mode
                     SettingsButton(
@@ -104,7 +104,7 @@ fun SettingsScreen(
                         }
                     )
 
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    Divider(modifier = Modifier.padding(vertical = 8.dp))
 
                     // Reset all
                     SettingsButton(
@@ -123,7 +123,7 @@ fun SettingsScreen(
                     subtitle = "Sensor Data Collection App"
                 )
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
 
                 // Version with tap-to-unlock
                 VersionItem(

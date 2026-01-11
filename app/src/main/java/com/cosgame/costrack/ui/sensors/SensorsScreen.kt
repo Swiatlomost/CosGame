@@ -364,7 +364,7 @@ private fun BufferProgressBar(fill: Float) {
             )
         }
         LinearProgressIndicator(
-            progress = { fill },
+            progress = fill,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(4.dp),

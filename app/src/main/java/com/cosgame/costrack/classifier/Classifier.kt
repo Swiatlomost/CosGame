@@ -32,7 +32,9 @@ data class ClassificationResult(
     val confidence: Float,
     val allProbabilities: Map<String, Float>,
     val timestamp: Long = System.currentTimeMillis(),
-    val inferenceTimeMs: Long = 0
+    val inferenceTimeMs: Long = 0,
+    val rawOutput: FloatArray? = null,  // Debug: raw model output before softmax
+    val debugInfo: String? = null  // Debug: additional info about input
 ) {
     /** Check if this is a high-confidence prediction */
     fun isHighConfidence(threshold: Float = 0.7f): Boolean = confidence >= threshold

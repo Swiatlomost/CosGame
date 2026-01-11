@@ -37,6 +37,14 @@ class ActiveMissionViewModel(application: Application) : AndroidViewModel(applic
     private val collectedSamples = mutableListOf<TrainingSample>()
 
     fun setMission(mission: Mission) {
+        // Don't reset if mission is already running or completed
+        val currentPhase = _uiState.value.phase
+        if (currentPhase == MissionPhase.COUNTDOWN ||
+            currentPhase == MissionPhase.COLLECTING ||
+            currentPhase == MissionPhase.COMPLETE) {
+            return
+        }
+
         _uiState.value = _uiState.value.copy(
             mission = mission,
             remainingSeconds = mission.durationSeconds,
