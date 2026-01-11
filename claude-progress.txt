@@ -487,3 +487,44 @@ UI Components:
 - CompletePhase: Success screen with sample count
 
 Next: Phase 3 - PersonalHarTrainer + TrainingScreen
+
+[2026-01-11] Session 11: Mission System - Phase 3 (On-Device Training)
+----------------------------------------------------------------------
+Feature: personal_har_training
+Status: COMPLETED
+
+Implementation:
+- PersonalHarTrainer with pure Kotlin neural network:
+  - 3-layer feedforward network (24→32→16→5)
+  - Xavier weight initialization
+  - ReLU activation, softmax output
+  - Cross-entropy loss, gradient descent
+  - Feature extraction: mean, std, min, max per axis
+  - Sliding window creation (50 samples @ 50Hz = 1 second)
+  - Z-score normalization per feature
+  - Model save/load to binary file
+- TrainingViewModel managing training state
+- TrainingScreen with:
+  - Data statistics card showing samples per activity
+  - Training progress with spinning animation
+  - Training result with accuracy metrics
+  - Model status card with delete option
+
+Files created:
+- app/src/main/java/com/cosgame/costrack/training/PersonalHarTrainer.kt
+- app/src/main/java/com/cosgame/costrack/ui/missions/TrainingViewModel.kt
+- app/src/main/java/com/cosgame/costrack/ui/missions/TrainingScreen.kt
+
+Neural Network Architecture:
+- Input: 24 features (6 axes × 4 stats)
+- Hidden 1: 32 neurons, ReLU
+- Hidden 2: 16 neurons, ReLU
+- Output: 5 classes, Softmax
+
+Training Parameters:
+- Epochs: 100
+- Learning rate: 0.01
+- Validation split: 20%
+- Min samples per class: 100
+
+Next: Phase 4 - TestScreen with model selection
