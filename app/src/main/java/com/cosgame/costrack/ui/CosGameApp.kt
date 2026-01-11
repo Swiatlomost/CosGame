@@ -15,6 +15,7 @@ import androidx.navigation.navArgument
 import com.cosgame.costrack.ui.classifiers.ActivityDataBrowserScreen
 import com.cosgame.costrack.ui.classifiers.ClassifiersScreen
 import com.cosgame.costrack.ui.home.HomeScreen
+import com.cosgame.costrack.ui.learn.LearnScreen
 import com.cosgame.costrack.ui.missions.*
 import com.cosgame.costrack.ui.navigation.Screen
 import com.cosgame.costrack.ui.touch.TouchMissionsScreen
@@ -52,7 +53,6 @@ fun CosGameApp() {
                             label = { Text(screen.title) },
                             selected = selected,
                             onClick = {
-                                // Get current route to check if we're on a nested screen
                                 val currentRoute = currentDestination?.route
                                 val isOnNestedScreen = currentRoute in listOf(
                                     Screen.ACTIVE_MISSION,
@@ -60,11 +60,11 @@ fun CosGameApp() {
                                     Screen.TEST,
                                     Screen.DATA_BROWSER,
                                     Screen.ACTIVITY_DATA_BROWSER,
-                                    Screen.TOUCH_MISSIONS
+                                    Screen.TRAIN_TOUCH,
+                                    Screen.TRAIN_MOVEMENT
                                 ) || currentRoute?.startsWith("active_mission/") == true
 
                                 if (isOnNestedScreen) {
-                                    // From nested screens, pop back to the target
                                     navController.navigate(screen.route) {
                                         popUpTo(Screen.Home.route) {
                                             inclusive = false
@@ -72,7 +72,6 @@ fun CosGameApp() {
                                         launchSingleTop = true
                                     }
                                 } else {
-                                    // Normal bottom nav behavior
                                     navController.navigate(screen.route) {
                                         popUpTo(navController.graph.findStartDestination().id) {
                                             saveState = screen.route != Screen.Home.route
@@ -106,7 +105,32 @@ fun CosGameApp() {
                     )
                 }
 
-                composable(Screen.Missions.route) {
+                // Learn screen (main training hub)
+                composable(Screen.Learn.route) {
+                    LearnScreen(
+                        onTrainTouch = {
+                            navController.navigate(Screen.TRAIN_TOUCH)
+                        },
+                        onTrainMovement = {
+                            navController.navigate(Screen.TRAIN_MOVEMENT)
+                        },
+                        onManageCategories = {
+                            // TODO: Navigate to categories screen
+                        }
+                    )
+                }
+
+                // Train Touch (Touch Intelligence)
+                composable(Screen.TRAIN_TOUCH) {
+                    TouchMissionsScreen(
+                        onBack = {
+                            navController.popBackStack()
+                        }
+                    )
+                }
+
+                // Train Movement (Activity Missions)
+                composable(Screen.TRAIN_MOVEMENT) {
                     MissionsScreen(
                         onStartMission = { mission ->
                             navController.navigate(Screen.activeMissionRoute(mission.id))
@@ -121,7 +145,7 @@ fun CosGameApp() {
                             navController.navigate(Screen.DATA_BROWSER)
                         },
                         onGoToTouchMissions = {
-                            navController.navigate(Screen.TOUCH_MISSIONS)
+                            // Not needed anymore, but keep for compatibility
                         }
                     )
                 }
@@ -184,14 +208,6 @@ fun CosGameApp() {
 
                 composable(Screen.Settings.route) {
                     SettingsScreen()
-                }
-
-                composable(Screen.TOUCH_MISSIONS) {
-                    TouchMissionsScreen(
-                        onBack = {
-                            navController.popBackStack()
-                        }
-                    )
                 }
             }
         }

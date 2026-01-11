@@ -2,13 +2,13 @@ package com.cosgame.costrack.ui.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Star
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
@@ -34,9 +34,9 @@ sealed class Screen(
         unselectedIcon = Icons.Outlined.PlayArrow
     )
 
-    object Missions : Screen(
-        route = "missions",
-        title = "Missions",
+    object Learn : Screen(
+        route = "learn",
+        title = "Learn",
         selectedIcon = Icons.Filled.Star,
         unselectedIcon = Icons.Outlined.Star
     )
@@ -56,7 +56,7 @@ sealed class Screen(
     )
 
     companion object {
-        val bottomNavItems = listOf(Home, Missions, Classifiers, Settings)
+        val bottomNavItems = listOf(Home, Learn, Classifiers, Settings)
 
         // Non-bottom-nav routes
         const val ACTIVE_MISSION = "active_mission/{missionId}"
@@ -64,7 +64,8 @@ sealed class Screen(
         const val TEST = "test"
         const val DATA_BROWSER = "data_browser"
         const val ACTIVITY_DATA_BROWSER = "activity_data_browser"
-        const val TOUCH_MISSIONS = "touch_missions"
+        const val TRAIN_TOUCH = "train_touch"
+        const val TRAIN_MOVEMENT = "train_movement"
 
         fun activeMissionRoute(missionId: String) = "active_mission/$missionId"
     }
