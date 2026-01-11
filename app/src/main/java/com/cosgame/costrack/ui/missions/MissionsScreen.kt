@@ -25,7 +25,7 @@ fun MissionsScreen(
     onGoToTraining: () -> Unit,
     onGoToTest: () -> Unit = {},
     onGoToDataBrowser: () -> Unit = {},
-    onGoToTouchLab: () -> Unit = {},
+    onGoToTouchMissions: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -79,7 +79,7 @@ fun MissionsScreen(
                 )
             }
 
-            // Touch Lab section
+            // Touch Missions section
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
@@ -88,7 +88,7 @@ fun MissionsScreen(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
-                TouchLabCard(onClick = onGoToTouchLab)
+                TouchMissionsCard(onClick = onGoToTouchMissions)
             }
 
             // Clear data button (at bottom)
@@ -323,7 +323,7 @@ private fun MissionCard(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TouchLabCard(
+private fun TouchMissionsCard(
     onClick: () -> Unit
 ) {
     Card(
@@ -348,12 +348,12 @@ private fun TouchLabCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Touch Lab",
+                    text = "Touch Missions",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Train touch gestures: taps, swipes, circles",
+                    text = "Collect touch behavior data",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
                 )

@@ -19,7 +19,6 @@ import com.cosgame.costrack.ui.missions.*
 import com.cosgame.costrack.ui.navigation.Screen
 import com.cosgame.costrack.ui.settings.SettingsScreen
 import com.cosgame.costrack.ui.theme.CosGameTheme
-import com.cosgame.costrack.ui.touch.TouchLabScreen
 
 /**
  * Main app composable with navigation.
@@ -60,7 +59,7 @@ fun CosGameApp() {
                                     Screen.TEST,
                                     Screen.DATA_BROWSER,
                                     Screen.ACTIVITY_DATA_BROWSER,
-                                    Screen.TOUCH_LAB
+                                    Screen.TOUCH_MISSIONS
                                 ) || currentRoute?.startsWith("active_mission/") == true
 
                                 if (isOnNestedScreen) {
@@ -120,8 +119,8 @@ fun CosGameApp() {
                         onGoToDataBrowser = {
                             navController.navigate(Screen.DATA_BROWSER)
                         },
-                        onGoToTouchLab = {
-                            navController.navigate(Screen.TOUCH_LAB)
+                        onGoToTouchMissions = {
+                            navController.navigate(Screen.TOUCH_MISSIONS)
                         }
                     )
                 }
@@ -186,13 +185,7 @@ fun CosGameApp() {
                     SettingsScreen()
                 }
 
-                composable(Screen.TOUCH_LAB) {
-                    TouchLabScreen(
-                        onBack = {
-                            navController.popBackStack()
-                        }
-                    )
-                }
+                // Touch Missions will be added in Phase 3
             }
         }
     }

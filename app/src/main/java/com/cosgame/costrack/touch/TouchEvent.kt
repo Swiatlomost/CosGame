@@ -1,152 +1,137 @@
 package com.cosgame.costrack.touch
 
 /**
- * Represents a single touch event with all relevant data.
+ * Type of touch event.
+ */
+enum class TouchEventType {
+    DOWN,
+    MOVE,
+    UP
+}
+
+/**
+ * Single touch event with normalized coordinates.
  */
 data class TouchEvent(
-    val id: Long = 0,
-    val sessionId: Long = 0,
-    val timestamp: Long = System.currentTimeMillis(),
-
-    // Position
-    val x: Float,
-    val y: Float,
-
-    // Touch properties
-    val pressure: Float,
-    val size: Float,
-
-    // Event type
-    val action: TouchAction,
-
-    // Multi-touch support
-    val fingerId: Int,
-    val fingerCount: Int,
-
-    // Screen info for normalization
-    val screenWidth: Int = 0,
-    val screenHeight: Int = 0
+    val x: Float,           // Normalized 0-1
+    val y: Float,           // Normalized 0-1
+    val pressure: Float,    // 0-1
+    val size: Float,        // 0-1
+    val timestamp: Long,    // System.currentTimeMillis()
+    val eventType: TouchEventType,
+    val fingerId: Int
 ) {
-    // Normalized position (0-1)
-    val normalizedX: Float get() = if (screenWidth > 0) x / screenWidth else x
-    val normalizedY: Float get() = if (screenHeight > 0) y / screenHeight else y
-
-    // Screen region (3x3 grid)
-    val screenRegion: ScreenRegion get() {
-        val col = when {
-            normalizedX < 0.33f -> 0
-            normalizedX < 0.66f -> 1
-            else -> 2
-        }
-        val row = when {
-            normalizedY < 0.33f -> 0
-            normalizedY < 0.66f -> 1
-            else -> 2
-        }
-        return ScreenRegion.fromPosition(row, col)
-    }
-}
-
-/**
- * Touch action types.
- */
-enum class TouchAction {
-    DOWN,           // Finger touched screen
-    MOVE,           // Finger moved
-    UP,             // Finger lifted
-    POINTER_DOWN,   // Additional finger touched
-    POINTER_UP,     // Additional finger lifted
-    CANCEL          // Touch cancelled
-}
-
-/**
- * Screen regions (3x3 grid).
- */
-enum class ScreenRegion(val row: Int, val col: Int) {
-    TOP_LEFT(0, 0),
-    TOP_CENTER(0, 1),
-    TOP_RIGHT(0, 2),
-    MIDDLE_LEFT(1, 0),
-    MIDDLE_CENTER(1, 1),
-    MIDDLE_RIGHT(1, 2),
-    BOTTOM_LEFT(2, 0),
-    BOTTOM_CENTER(2, 1),
-    BOTTOM_RIGHT(2, 2);
-
     companion object {
-        fun fromPosition(row: Int, col: Int): ScreenRegion {
-            return entries.find { it.row == row && it.col == col } ?: MIDDLE_CENTER
+        /**
+         * Create TouchEvent from raw screen coordinates.
+         */
+        fun fromRaw(
+            rawX: Float,
+            rawY: Float,
+            screenWidth: Int,
+            screenHeight: Int,
+            pressure: Float,
+            size: Float,
+            eventType: TouchEventType,
+            fingerId: Int
+        ): TouchEvent {
+            return TouchEvent(
+                x = (rawX / screenWidth).coerceIn(0f, 1f),
+                y = (rawY / screenHeight).coerceIn(0f, 1f),
+                pressure = pressure.coerceIn(0f, 1f),
+                size = size.coerceIn(0f, 1f),
+                timestamp = System.currentTimeMillis(),
+                eventType = eventType,
+                fingerId = fingerId
+            )
         }
+    }
+
+    /**
+     * Get zone index (0-8) for 3x3 grid.
+     */
+    fun getZone3x3(): Int {
+        val col = (x * 3).toInt().coerceIn(0, 2)
+        val row = (y * 3).toInt().coerceIn(0, 2)
+        return row * 3 + col
+    }
+
+    /**
+     * Get zone index for 10x20 grid (for heatmap).
+     */
+    fun getZone10x20(): Int {
+        val col = (x * 10).toInt().coerceIn(0, 9)
+        val row = (y * 20).toInt().coerceIn(0, 19)
+        return row * 10 + col
     }
 }
 
 /**
- * A sequence of touch events forming a gesture.
+ * Represents a complete gesture (from DOWN to UP).
  */
-data class TouchSequence(
+data class TouchGesture(
     val events: List<TouchEvent>,
-    val startTime: Long = events.firstOrNull()?.timestamp ?: 0,
-    val endTime: Long = events.lastOrNull()?.timestamp ?: 0
+    val fingerId: Int
 ) {
+    val startTime: Long get() = events.firstOrNull()?.timestamp ?: 0
+    val endTime: Long get() = events.lastOrNull()?.timestamp ?: 0
     val duration: Long get() = endTime - startTime
-    val eventCount: Int get() = events.size
 
-    // First and last positions
     val startX: Float get() = events.firstOrNull()?.x ?: 0f
     val startY: Float get() = events.firstOrNull()?.y ?: 0f
     val endX: Float get() = events.lastOrNull()?.x ?: 0f
     val endY: Float get() = events.lastOrNull()?.y ?: 0f
 
-    // Distance traveled
+    val avgPressure: Float get() = if (events.isNotEmpty()) {
+        events.map { it.pressure }.average().toFloat()
+    } else 0f
+
+    /**
+     * Total distance traveled (sum of all segments).
+     */
     val totalDistance: Float get() {
-        var distance = 0f
+        if (events.size < 2) return 0f
+        var dist = 0f
         for (i in 1 until events.size) {
-            val dx = events[i].x - events[i-1].x
-            val dy = events[i].y - events[i-1].y
-            distance += kotlin.math.sqrt(dx * dx + dy * dy)
+            val dx = events[i].x - events[i - 1].x
+            val dy = events[i].y - events[i - 1].y
+            dist += kotlin.math.sqrt(dx * dx + dy * dy)
         }
-        return distance
+        return dist
     }
 
-    // Direct distance (start to end)
+    /**
+     * Direct distance from start to end.
+     */
     val directDistance: Float get() {
         val dx = endX - startX
         val dy = endY - startY
         return kotlin.math.sqrt(dx * dx + dy * dy)
     }
 
-    // Average velocity (pixels per second)
-    val averageVelocity: Float get() {
+    /**
+     * Velocity in normalized units per second.
+     */
+    val velocity: Float get() {
         return if (duration > 0) totalDistance / (duration / 1000f) else 0f
     }
 
-    // Average pressure
-    val averagePressure: Float get() {
-        return if (events.isNotEmpty()) events.map { it.pressure }.average().toFloat() else 0f
+    /**
+     * Linearity - how straight the gesture is (1 = perfectly straight).
+     */
+    val linearity: Float get() {
+        return if (totalDistance > 0) {
+            (directDistance / totalDistance).coerceIn(0f, 1f)
+        } else 1f
     }
 
-    // Gesture type detection
-    val gestureType: GestureType get() {
-        return when {
-            duration < 200 && totalDistance < 50 -> GestureType.TAP
-            duration < 500 && totalDistance < 50 -> GestureType.LONG_TAP
-            directDistance > 100 && averageVelocity > 500 -> GestureType.SWIPE
-            totalDistance > 200 && directDistance < totalDistance * 0.3f -> GestureType.DRAW
-            else -> GestureType.DRAG
-        }
-    }
-}
+    /**
+     * Is this a tap (short duration, little movement)?
+     */
+    val isTap: Boolean get() = duration < 300 && totalDistance < 0.05f
 
-/**
- * Basic gesture types.
- */
-enum class GestureType {
-    TAP,
-    LONG_TAP,
-    SWIPE,
-    DRAG,
-    DRAW,
-    PINCH,
-    ROTATE,
-    UNKNOWN
+    /**
+     * Is this a swipe (fast, mostly linear)?
+     */
+    val isSwipe: Boolean get() = velocity > 0.3f && linearity > 0.7f && totalDistance > 0.1f
 }

@@ -6,6 +6,11 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
+import com.cosgame.costrack.activitylog.ActivityLog
+import com.cosgame.costrack.activitylog.ActivityLogDao
+import com.cosgame.costrack.activitylog.ActivitySession
+import com.cosgame.costrack.touch.TouchSession
+import com.cosgame.costrack.touch.TouchSessionDao
 
 /**
  * Type converters for Room database.
@@ -19,17 +24,27 @@ class Converters {
 }
 
 /**
- * Room database for training data.
+ * Room database for training data and activity logs.
  */
 @Database(
-    entities = [TrainingSample::class, TrainingSession::class],
-    version = 1,
+    entities = [
+        TrainingSample::class,
+        TrainingSession::class,
+        ActivityLog::class,
+        ActivitySession::class,
+        TouchSession::class
+    ],
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class TrainingDatabase : RoomDatabase() {
 
     abstract fun trainingDao(): TrainingDao
+
+    abstract fun activityLogDao(): ActivityLogDao
+
+    abstract fun touchSessionDao(): TouchSessionDao
 
     companion object {
         private const val DATABASE_NAME = "training_database"

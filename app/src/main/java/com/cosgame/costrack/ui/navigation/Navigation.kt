@@ -64,7 +64,7 @@ sealed class Screen(
         const val TEST = "test"
         const val DATA_BROWSER = "data_browser"
         const val ACTIVITY_DATA_BROWSER = "activity_data_browser"
-        const val TOUCH_LAB = "touch_lab"
+        const val TOUCH_MISSIONS = "touch_missions"
 
         fun activeMissionRoute(missionId: String) = "active_mission/$missionId"
     }
