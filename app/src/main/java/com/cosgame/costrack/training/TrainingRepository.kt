@@ -22,6 +22,8 @@ class TrainingRepository private constructor(context: Context) {
 
     suspend fun getAllSamples(): List<TrainingSample> = dao.getAllSamples()
 
+    suspend fun getAllSamplesWithCategory(): List<TrainingSample> = dao.getAllSamplesWithCategory()
+
     suspend fun getCountByActivity(activityType: ActivityType): Int =
         dao.getCountByActivity(activityType)
 
@@ -61,6 +63,11 @@ class TrainingRepository private constructor(context: Context) {
 
     suspend fun deleteAllSessions() = dao.deleteAllSessions()
 
+    suspend fun deleteSession(sessionId: Long) = dao.deleteSession(sessionId)
+
+    suspend fun getSamplesBySession(sessionId: Long): List<TrainingSample> =
+        dao.getSamplesBySession(sessionId)
+
     // ===== Statistics =====
 
     suspend fun getSampleCountsPerActivity(): List<ActivitySampleCount> =
@@ -91,6 +98,20 @@ class TrainingRepository private constructor(context: Context) {
         dao.deleteAllSamples()
         dao.deleteAllSessions()
     }
+
+    // ===== New samples tracking =====
+
+    suspend fun getNewSamplesCount(sinceTimestamp: Long): Int =
+        dao.getNewSamplesCount(sinceTimestamp)
+
+    fun getNewSamplesCountFlow(sinceTimestamp: Long): Flow<Int> =
+        dao.getNewSamplesCountFlow(sinceTimestamp)
+
+    suspend fun getNewSampleCountsPerActivity(sinceTimestamp: Long): List<ActivitySampleCount> =
+        dao.getNewSampleCountsPerActivity(sinceTimestamp)
+
+    fun getNewSampleCountsPerActivityFlow(sinceTimestamp: Long): Flow<List<ActivitySampleCount>> =
+        dao.getNewSampleCountsPerActivityFlow(sinceTimestamp)
 
     companion object {
         @Volatile

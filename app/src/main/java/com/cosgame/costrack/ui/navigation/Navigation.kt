@@ -67,6 +67,7 @@ sealed class Screen(
         const val TRAIN_TOUCH = "train_touch"
         const val TRAIN_MOVEMENT = "train_movement"
         const val CATEGORIES = "categories"
+        const val CATEGORY_TRAINING = "category_training"
 
         fun activeMissionRoute(missionId: String, category: String = "") = "active_mission/$missionId/$category"
     }

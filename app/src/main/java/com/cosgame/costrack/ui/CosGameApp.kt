@@ -18,6 +18,7 @@ import com.cosgame.costrack.ui.classifiers.ClassifiersScreen
 import com.cosgame.costrack.ui.home.HomeScreen
 import com.cosgame.costrack.ui.learn.LearnScreen
 import com.cosgame.costrack.ui.learn.CategoriesScreen
+import com.cosgame.costrack.ui.learn.CategoryTrainingScreen
 import com.cosgame.costrack.ui.missions.*
 import com.cosgame.costrack.ui.navigation.Screen
 import com.cosgame.costrack.ui.touch.TouchMissionsScreen
@@ -119,6 +120,9 @@ fun CosGameApp() {
                         },
                         onManageCategories = {
                             navController.navigate(Screen.CATEGORIES)
+                        },
+                        onTrainModels = {
+                            navController.navigate(Screen.CATEGORY_TRAINING)
                         }
                     )
                 }
@@ -126,6 +130,15 @@ fun CosGameApp() {
                 // Categories management
                 composable(Screen.CATEGORIES) {
                     CategoriesScreen(
+                        onBack = {
+                            navController.popBackStack()
+                        }
+                    )
+                }
+
+                // Category training
+                composable(Screen.CATEGORY_TRAINING) {
+                    CategoryTrainingScreen(
                         onBack = {
                             navController.popBackStack()
                         }

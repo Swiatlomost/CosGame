@@ -548,6 +548,18 @@ abstract class SensorClassifier(
     fun isModelTrained(): Boolean = isTrained
 
     /**
+     * Check if model has been trained (alias).
+     */
+    fun hasTrainedModel(): Boolean = isTrained
+
+    /**
+     * Set class labels before training.
+     */
+    fun setClassLabels(labels: List<String>) {
+        classLabels = labels
+    }
+
+    /**
      * Get the labels for trained classes.
      */
     fun labels(): List<String> = classLabels

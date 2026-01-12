@@ -17,7 +17,8 @@ import androidx.compose.ui.unit.sp
 fun LearnScreen(
     onTrainTouch: () -> Unit,
     onTrainMovement: () -> Unit,
-    onManageCategories: () -> Unit
+    onManageCategories: () -> Unit,
+    onTrainModels: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -112,6 +113,47 @@ fun LearnScreen(
                             Icons.Filled.ArrowForward,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            // Train Models Card
+            item {
+                Card(
+                    onClick = onTrainModels,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "🧠",
+                            fontSize = 32.sp
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Train Models",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Train neural networks on collected data",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                        Icon(
+                            Icons.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
                 }
