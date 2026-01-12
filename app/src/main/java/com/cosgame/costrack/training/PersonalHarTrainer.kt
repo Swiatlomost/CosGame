@@ -9,12 +9,37 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
+ * Training configuration parameters.
+ */
+data class TrainingConfig(
+    val epochs: Int = 100,
+    val learningRate: Float = 0.01f,
+    val learningRateDecay: Float = 0.95f,  // Decay factor per 10 epochs
+    val validationSplit: Float = 0.2f,
+    val earlyStoppingPatience: Int = 15,   // Stop if no improvement for N epochs
+    val minDeltaImprovement: Float = 0.001f,  // Minimum improvement to count
+    val gradientClipNorm: Float = 1.0f,    // Clip gradients above this norm
+    val windowSize: Int = 50,
+    val windowStepSize: Int = 25,
+    val minSamplesRequired: Int = 100,
+    val minWindowsRequired: Int = 50
+)
+
+/**
  * On-device trainer for personal HAR model.
  * Uses a simple feedforward neural network trained with gradient descent.
+ *
+ * Improvements over basic implementation:
+ * - He initialization for ReLU activations
+ * - Learning rate decay
+ * - Early stopping to prevent overfitting
+ * - Gradient clipping for stability
+ * - Class balance validation
  */
 class PersonalHarTrainer(private val context: Context) {
 
     private val repository = TrainingRepository.getInstance(context)
+    private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     // Network architecture
     private val inputSize = 24  // 6 axes * 4 features (mean, std, min, max)
@@ -34,6 +59,14 @@ class PersonalHarTrainer(private val context: Context) {
     private var weights3 = Array(hiddenSize2) { FloatArray(outputSize) }
     private var bias3 = FloatArray(outputSize)
 
+    // Best weights for early stopping
+    private var bestWeights1: Array<FloatArray>? = null
+    private var bestBias1: FloatArray? = null
+    private var bestWeights2: Array<FloatArray>? = null
+    private var bestBias2: FloatArray? = null
+    private var bestWeights3: Array<FloatArray>? = null
+    private var bestBias3: FloatArray? = null
+
     /**
      * Train result with metrics.
      */
@@ -43,6 +76,8 @@ class PersonalHarTrainer(private val context: Context) {
         val trainingSamples: Int,
         val validationSamples: Int,
         val epochs: Int,
+        val stoppedEarly: Boolean = false,
+        val finalLearningRate: Float = 0f,
         val error: String? = null
     )
 
@@ -54,31 +89,61 @@ class PersonalHarTrainer(private val context: Context) {
         learningRate: Float = 0.01f,
         validationSplit: Float = 0.2f,
         onProgress: (Float, Float) -> Unit = { _, _ -> }
+    ): TrainResult = train(
+        config = TrainingConfig(
+            epochs = epochs,
+            learningRate = learningRate,
+            validationSplit = validationSplit
+        ),
+        onProgress = onProgress
+    )
+
+    /**
+     * Train the personal model with full configuration.
+     */
+    suspend fun train(
+        config: TrainingConfig = TrainingConfig(),
+        onProgress: (Float, Float) -> Unit = { _, _ -> }
     ): TrainResult = withContext(Dispatchers.Default) {
         try {
             // Load all samples
             val allSamples = repository.getAllSamples()
-            if (allSamples.size < 100) {
+            if (allSamples.size < config.minSamplesRequired) {
                 return@withContext TrainResult(
                     success = false,
                     accuracy = 0f,
                     trainingSamples = 0,
                     validationSamples = 0,
                     epochs = 0,
-                    error = "Not enough samples. Need at least 100, have ${allSamples.size}"
+                    error = "Not enough samples. Need at least ${config.minSamplesRequired}, have ${allSamples.size}"
+                )
+            }
+
+            // Check class balance
+            val classCounts = allSamples.groupBy { it.activityType }.mapValues { it.value.size }
+            val minClassSamples = classCounts.values.minOrNull() ?: 0
+            if (minClassSamples < 20) {
+                val underrepresented = classCounts.filter { it.value < 20 }.keys.joinToString()
+                return@withContext TrainResult(
+                    success = false,
+                    accuracy = 0f,
+                    trainingSamples = 0,
+                    validationSamples = 0,
+                    epochs = 0,
+                    error = "Insufficient samples for: $underrepresented. Need at least 20 per class."
                 )
             }
 
             // Group samples by activity and create windows
-            val windows = createWindows(allSamples, windowSize = 50, stepSize = 25)
-            if (windows.size < 50) {
+            val windows = createWindows(allSamples, config.windowSize, config.windowStepSize)
+            if (windows.size < config.minWindowsRequired) {
                 return@withContext TrainResult(
                     success = false,
                     accuracy = 0f,
                     trainingSamples = 0,
                     validationSamples = 0,
                     epochs = 0,
-                    error = "Not enough windows. Need at least 50, have ${windows.size}"
+                    error = "Not enough windows. Need at least ${config.minWindowsRequired}, have ${windows.size}"
                 )
             }
 
@@ -89,7 +154,7 @@ class PersonalHarTrainer(private val context: Context) {
 
             // Shuffle and split into train/validation
             val shuffled = features.shuffled(Random(42))
-            val splitIndex = (shuffled.size * (1 - validationSplit)).toInt()
+            val splitIndex = (shuffled.size * (1 - config.validationSplit)).toInt()
             val trainData = shuffled.take(splitIndex)
             val valData = shuffled.drop(splitIndex)
 
@@ -100,27 +165,58 @@ class PersonalHarTrainer(private val context: Context) {
             val trainNorm = trainData.map { (feat, label) -> normalize(feat) to label }
             val valNorm = valData.map { (feat, label) -> normalize(feat) to label }
 
-            // Initialize weights
+            // Initialize weights with He initialization
             initializeWeights()
 
-            // Training loop
+            // Training loop with early stopping
             var bestAccuracy = 0f
-            for (epoch in 0 until epochs) {
+            var epochsWithoutImprovement = 0
+            var currentLr = config.learningRate
+            var actualEpochs = 0
+            var stoppedEarly = false
+
+            for (epoch in 0 until config.epochs) {
+                actualEpochs = epoch + 1
+
+                // Learning rate decay every 10 epochs
+                if (epoch > 0 && epoch % 10 == 0) {
+                    currentLr *= config.learningRateDecay
+                }
+
                 var totalLoss = 0f
                 val trainShuffled = trainNorm.shuffled()
 
                 for ((input, label) in trainShuffled) {
-                    val loss = trainStep(input, label, learningRate)
+                    val loss = trainStep(input, label, currentLr, config.gradientClipNorm)
                     totalLoss += loss
                 }
 
                 // Evaluate on validation set
                 val accuracy = evaluate(valNorm)
-                if (accuracy > bestAccuracy) {
+
+                // Early stopping check
+                if (accuracy > bestAccuracy + config.minDeltaImprovement) {
                     bestAccuracy = accuracy
+                    epochsWithoutImprovement = 0
+                    // Save best weights
+                    saveBestWeights()
+                } else {
+                    epochsWithoutImprovement++
+                    if (epochsWithoutImprovement >= config.earlyStoppingPatience) {
+                        // Restore best weights
+                        restoreBestWeights()
+                        stoppedEarly = true
+                        onProgress(1f, bestAccuracy)
+                        break
+                    }
                 }
 
-                onProgress(epoch.toFloat() / epochs, accuracy)
+                onProgress(epoch.toFloat() / config.epochs, accuracy)
+            }
+
+            // Ensure we have best weights if not stopped early
+            if (!stoppedEarly && bestWeights1 != null) {
+                restoreBestWeights()
             }
 
             // Save the model
@@ -131,7 +227,9 @@ class PersonalHarTrainer(private val context: Context) {
                 accuracy = bestAccuracy,
                 trainingSamples = trainData.size,
                 validationSamples = valData.size,
-                epochs = epochs
+                epochs = actualEpochs,
+                stoppedEarly = stoppedEarly,
+                finalLearningRate = currentLr
             )
         } catch (e: Exception) {
             TrainResult(
@@ -143,6 +241,30 @@ class PersonalHarTrainer(private val context: Context) {
                 error = e.message ?: "Unknown error"
             )
         }
+    }
+
+    /**
+     * Save current weights as best.
+     */
+    private fun saveBestWeights() {
+        bestWeights1 = weights1.map { it.copyOf() }.toTypedArray()
+        bestBias1 = bias1.copyOf()
+        bestWeights2 = weights2.map { it.copyOf() }.toTypedArray()
+        bestBias2 = bias2.copyOf()
+        bestWeights3 = weights3.map { it.copyOf() }.toTypedArray()
+        bestBias3 = bias3.copyOf()
+    }
+
+    /**
+     * Restore best weights.
+     */
+    private fun restoreBestWeights() {
+        bestWeights1?.let { weights1 = it.map { row -> row.copyOf() }.toTypedArray() }
+        bestBias1?.let { bias1 = it.copyOf() }
+        bestWeights2?.let { weights2 = it.map { row -> row.copyOf() }.toTypedArray() }
+        bestBias2?.let { bias2 = it.copyOf() }
+        bestWeights3?.let { weights3 = it.map { row -> row.copyOf() }.toTypedArray() }
+        bestBias3?.let { bias3 = it.copyOf() }
     }
 
     /**
@@ -227,34 +349,49 @@ class PersonalHarTrainer(private val context: Context) {
     }
 
     /**
-     * Initialize weights with Xavier initialization.
+     * Initialize weights with He initialization (better for ReLU).
+     * He init: weights ~ N(0, sqrt(2/fan_in))
      */
     private fun initializeWeights() {
-        fun xavierInit(fanIn: Int, fanOut: Int): Float {
-            val limit = sqrt(6.0 / (fanIn + fanOut))
-            return (Random.nextFloat() * 2 * limit - limit).toFloat()
+        fun heInit(fanIn: Int): Float {
+            // He initialization for ReLU: std = sqrt(2/fan_in)
+            val std = sqrt(2.0 / fanIn)
+            // Box-Muller transform for normal distribution
+            val u1 = Random.nextFloat().coerceIn(0.0001f, 0.9999f)
+            val u2 = Random.nextFloat()
+            val normal = sqrt(-2.0 * kotlin.math.ln(u1.toDouble())) *
+                        kotlin.math.cos(2.0 * Math.PI * u2)
+            return (normal * std).toFloat()
         }
 
         for (i in 0 until inputSize) {
             for (j in 0 until hiddenSize1) {
-                weights1[i][j] = xavierInit(inputSize, hiddenSize1)
+                weights1[i][j] = heInit(inputSize)
             }
         }
         bias1 = FloatArray(hiddenSize1) { 0f }
 
         for (i in 0 until hiddenSize1) {
             for (j in 0 until hiddenSize2) {
-                weights2[i][j] = xavierInit(hiddenSize1, hiddenSize2)
+                weights2[i][j] = heInit(hiddenSize1)
             }
         }
         bias2 = FloatArray(hiddenSize2) { 0f }
 
         for (i in 0 until hiddenSize2) {
             for (j in 0 until outputSize) {
-                weights3[i][j] = xavierInit(hiddenSize2, outputSize)
+                weights3[i][j] = heInit(hiddenSize2)
             }
         }
         bias3 = FloatArray(outputSize) { 0f }
+
+        // Clear best weights
+        bestWeights1 = null
+        bestBias1 = null
+        bestWeights2 = null
+        bestBias2 = null
+        bestWeights3 = null
+        bestBias3 = null
     }
 
     /**
@@ -298,9 +435,9 @@ class PersonalHarTrainer(private val context: Context) {
     }
 
     /**
-     * Single training step with backpropagation.
+     * Single training step with backpropagation and gradient clipping.
      */
-    private fun trainStep(input: FloatArray, label: Int, lr: Float): Float {
+    private fun trainStep(input: FloatArray, label: Int, lr: Float, clipNorm: Float = 1.0f): Float {
         // Forward pass
         val (hidden1, hidden2, output) = forward(input)
 
@@ -311,6 +448,9 @@ class PersonalHarTrainer(private val context: Context) {
         // Output layer gradients
         val dOutput = output.copyOf()
         dOutput[label] -= 1f
+
+        // Clip output gradients
+        clipGradients(dOutput, clipNorm)
 
         // Hidden2 -> Output gradients
         val dHidden2 = FloatArray(hiddenSize2)
@@ -329,6 +469,9 @@ class PersonalHarTrainer(private val context: Context) {
             if (hidden2[i] <= 0) dHidden2[i] = 0f
         }
 
+        // Clip gradients
+        clipGradients(dHidden2, clipNorm)
+
         // Hidden1 -> Hidden2 gradients
         val dHidden1 = FloatArray(hiddenSize1)
         for (i in 0 until hiddenSize1) {
@@ -346,6 +489,9 @@ class PersonalHarTrainer(private val context: Context) {
             if (hidden1[i] <= 0) dHidden1[i] = 0f
         }
 
+        // Clip gradients
+        clipGradients(dHidden1, clipNorm)
+
         // Input -> Hidden1 gradients
         for (i in 0 until inputSize) {
             for (j in 0 until hiddenSize1) {
@@ -357,6 +503,23 @@ class PersonalHarTrainer(private val context: Context) {
         }
 
         return loss
+    }
+
+    /**
+     * Clip gradients by norm to prevent exploding gradients.
+     */
+    private fun clipGradients(gradients: FloatArray, maxNorm: Float) {
+        var normSquared = 0f
+        for (g in gradients) {
+            normSquared += g * g
+        }
+        val norm = sqrt(normSquared)
+        if (norm > maxNorm) {
+            val scale = maxNorm / norm
+            for (i in gradients.indices) {
+                gradients[i] *= scale
+            }
+        }
     }
 
     /**
@@ -409,7 +572,7 @@ class PersonalHarTrainer(private val context: Context) {
     }
 
     /**
-     * Save model to file.
+     * Save model to file and record training timestamp.
      */
     private fun saveModel() {
         val file = File(context.filesDir, MODEL_FILENAME)
@@ -426,6 +589,9 @@ class PersonalHarTrainer(private val context: Context) {
             weights3.forEach { row -> row.forEach { out.write(it.toRawBits().toByteArray()) } }
             bias3.forEach { out.write(it.toRawBits().toByteArray()) }
         }
+
+        // Save training timestamp
+        prefs.edit().putLong(KEY_LAST_TRAINING_TIME, System.currentTimeMillis()).apply()
     }
 
     /**
@@ -484,14 +650,25 @@ class PersonalHarTrainer(private val context: Context) {
     }
 
     /**
-     * Delete the trained model.
+     * Delete the trained model and clear training timestamp.
      */
     fun deleteModel() {
         File(context.filesDir, MODEL_FILENAME).delete()
+        prefs.edit().remove(KEY_LAST_TRAINING_TIME).apply()
+    }
+
+    /**
+     * Get the timestamp of the last training session.
+     * Returns 0 if no training has been done yet.
+     */
+    fun getLastTrainingTimestamp(): Long {
+        return prefs.getLong(KEY_LAST_TRAINING_TIME, 0L)
     }
 
     companion object {
         private const val MODEL_FILENAME = "personal_har_model.bin"
+        private const val PREFS_NAME = "personal_har_trainer_prefs"
+        private const val KEY_LAST_TRAINING_TIME = "last_training_time"
     }
 }
 
