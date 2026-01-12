@@ -13,6 +13,9 @@ data class TrainingSample(
 
     val activityType: ActivityType,
 
+    // User-defined category (e.g., "me", "other")
+    val category: String = "",
+
     // Accelerometer data (m/s²)
     val accX: Float,
     val accY: Float,
@@ -44,11 +47,13 @@ data class TrainingSample(
             gyroX: Float,
             gyroY: Float,
             gyroZ: Float,
-            sessionId: Long
+            sessionId: Long,
+            category: String = ""
         ): TrainingSample {
             val magnitude = kotlin.math.sqrt(accX * accX + accY * accY + accZ * accZ)
             return TrainingSample(
                 activityType = activityType,
+                category = category,
                 accX = accX,
                 accY = accY,
                 accZ = accZ,

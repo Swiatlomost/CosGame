@@ -3,6 +3,8 @@ package com.cosgame.costrack.ui.touch
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.cosgame.costrack.learn.Category
+import com.cosgame.costrack.learn.CategoryRepository
 import com.cosgame.costrack.touch.*
 import com.cosgame.costrack.training.TrainingDatabase
 import kotlinx.coroutines.Job
@@ -47,6 +49,7 @@ data class TouchMissionsUiState(
     val drawingPath: List<Pair<Float, Float>> = emptyList(),
     val completedPaths: List<List<Pair<Float, Float>>> = emptyList(),
     val selectedLabel: String = "default",
+    val categories: List<Category> = emptyList(),
 
     // Data stats
     val totalSessions: Int = 0,
@@ -79,6 +82,7 @@ class TouchMissionsViewModel(application: Application) : AndroidViewModel(applic
 
     private val database = TrainingDatabase.getInstance(application)
     private val repository = TouchRepository(database.touchSessionDao())
+    private val categoryRepository = CategoryRepository(database.categoryDao())
     private val collector = TouchSessionCollector()
     private val missionRunner = TouchMissionRunner(collector, repository)
     private val classifier = TouchClassifier(application, numClasses = 5)
@@ -144,7 +148,26 @@ class TouchMissionsViewModel(application: Application) : AndroidViewModel(applic
 
         // Load initial data
         loadData()
+        loadCategories()
         loadModelInfo()
+    }
+
+    private fun loadCategories() {
+        viewModelScope.launch {
+            categoryRepository.ensureDefaults()
+            val categories = categoryRepository.getAllCategories()
+            val categoryNames = categories.map { it.name }
+
+            // Set default label to first category if available
+            val currentLabel = _uiState.value.selectedLabel
+            val validLabel = if (currentLabel in categoryNames) currentLabel
+                            else categoryNames.firstOrNull() ?: "default"
+
+            _uiState.value = _uiState.value.copy(
+                categories = categories,
+                selectedLabel = validLabel
+            )
+        }
     }
 
     private fun loadData() {
@@ -217,7 +240,11 @@ class TouchMissionsViewModel(application: Application) : AndroidViewModel(applic
     private fun saveAndRefresh() {
         viewModelScope.launch {
             missionRunner.saveResult()
+            // Increment touch samples for the selected category
+            val label = _uiState.value.selectedLabel
+            categoryRepository.incrementTouchSamples(label)
             loadData()
+            loadCategories() // Refresh category counts
         }
     }
 

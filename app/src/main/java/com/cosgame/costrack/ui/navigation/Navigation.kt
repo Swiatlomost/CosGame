@@ -59,7 +59,7 @@ sealed class Screen(
         val bottomNavItems = listOf(Home, Learn, Classifiers, Settings)
 
         // Non-bottom-nav routes
-        const val ACTIVE_MISSION = "active_mission/{missionId}"
+        const val ACTIVE_MISSION = "active_mission/{missionId}/{category}"
         const val TRAINING = "training"
         const val TEST = "test"
         const val DATA_BROWSER = "data_browser"
@@ -68,6 +68,6 @@ sealed class Screen(
         const val TRAIN_MOVEMENT = "train_movement"
         const val CATEGORIES = "categories"
 
-        fun activeMissionRoute(missionId: String) = "active_mission/$missionId"
+        fun activeMissionRoute(missionId: String, category: String = "") = "active_mission/$missionId/$category"
     }
 }

@@ -25,6 +25,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 @Composable
 fun ActiveMissionScreen(
     missionId: String,
+    category: String = "",
     viewModel: ActiveMissionViewModel = viewModel(),
     onMissionComplete: () -> Unit,
     onCancel: () -> Unit,
@@ -33,11 +34,11 @@ fun ActiveMissionScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     // Initialize mission only if not already set (survives rotation)
-    LaunchedEffect(missionId) {
+    LaunchedEffect(missionId, category) {
         if (viewModel.uiState.value.mission == null) {
             val mission = Missions.getById(missionId)
             if (mission != null) {
-                viewModel.setMission(mission)
+                viewModel.setMission(mission, category)
             }
         }
     }

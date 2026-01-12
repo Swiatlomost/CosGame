@@ -3,7 +3,10 @@ package com.cosgame.costrack.ui.missions
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.cosgame.costrack.learn.Category
+import com.cosgame.costrack.learn.CategoryRepository
 import com.cosgame.costrack.training.ActivityType
+import com.cosgame.costrack.training.TrainingDatabase
 import com.cosgame.costrack.training.TrainingRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,6 +20,8 @@ import kotlinx.coroutines.launch
 class MissionsViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = TrainingRepository.getInstance(application)
+    private val database = TrainingDatabase.getInstance(application)
+    private val categoryRepository = CategoryRepository(database.categoryDao())
 
     private val _uiState = MutableStateFlow(MissionsUiState())
     val uiState: StateFlow<MissionsUiState> = _uiState.asStateFlow()
@@ -24,6 +29,29 @@ class MissionsViewModel(application: Application) : AndroidViewModel(application
     init {
         observeSampleCounts()
         loadCompletionCounts()
+        loadCategories()
+    }
+
+    private fun loadCategories() {
+        viewModelScope.launch {
+            categoryRepository.ensureDefaults()
+            val categories = categoryRepository.getAllCategories()
+            val categoryNames = categories.map { it.name }
+
+            // Set default category to first one if available
+            val currentCategory = _uiState.value.selectedCategory
+            val validCategory = if (currentCategory in categoryNames) currentCategory
+                               else categoryNames.firstOrNull() ?: ""
+
+            _uiState.value = _uiState.value.copy(
+                categories = categories,
+                selectedCategory = validCategory
+            )
+        }
+    }
+
+    fun setSelectedCategory(category: String) {
+        _uiState.value = _uiState.value.copy(selectedCategory = category)
     }
 
     private fun observeSampleCounts() {
@@ -71,7 +99,9 @@ data class MissionsUiState(
     val missions: List<Mission> = Missions.ALL,
     val sampleCounts: Map<ActivityType, Int> = emptyMap(),
     val completionCounts: Map<ActivityType, Int> = emptyMap(),
-    val totalSamples: Int = 0
+    val totalSamples: Int = 0,
+    val categories: List<Category> = emptyList(),
+    val selectedCategory: String = ""
 ) {
     fun getSampleCount(activityType: ActivityType): Int = sampleCounts[activityType] ?: 0
 

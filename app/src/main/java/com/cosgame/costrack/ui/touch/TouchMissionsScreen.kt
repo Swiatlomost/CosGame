@@ -102,6 +102,7 @@ private fun CollectTabContent(
                 totalSessions = uiState.totalSessions,
                 labelCounts = uiState.labelCounts,
                 selectedLabel = uiState.selectedLabel,
+                categories = uiState.categories,
                 onLabelChange = { viewModel.setLabel(it) },
                 onSelectMission = { viewModel.startMission(it) }
             )
@@ -146,6 +147,7 @@ private fun MissionSelector(
     totalSessions: Int,
     labelCounts: Map<String, Int>,
     selectedLabel: String,
+    categories: List<com.cosgame.costrack.learn.Category>,
     onLabelChange: (String) -> Unit,
     onSelectMission: (TouchMissionType) -> Unit
 ) {
@@ -211,6 +213,7 @@ private fun MissionSelector(
         item {
             LabelSelector(
                 selectedLabel = selectedLabel,
+                categories = categories,
                 onLabelChange = onLabelChange
             )
         }
@@ -237,28 +240,54 @@ private fun MissionSelector(
 @Composable
 private fun LabelSelector(
     selectedLabel: String,
+    categories: List<com.cosgame.costrack.learn.Category>,
     onLabelChange: (String) -> Unit
 ) {
-    val labels = listOf("left_hand", "right_hand", "relaxed", "stressed", "default")
-
     Column {
         Text(
-            text = "Label for training",
+            text = "Category for training",
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            labels.forEach { label ->
-                FilterChip(
-                    selected = selectedLabel == label,
-                    onClick = { onLabelChange(label) },
-                    label = { Text(label.replace("_", " "), fontSize = 11.sp) },
-                    modifier = Modifier.weight(1f)
-                )
+
+        if (categories.isEmpty()) {
+            Text(
+                text = "No categories defined. Go to Learn > My Categories to add some.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        } else {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                categories.take(4).forEach { category ->
+                    FilterChip(
+                        selected = selectedLabel == category.name,
+                        onClick = { onLabelChange(category.name) },
+                        label = { Text(category.name.replace("_", " "), fontSize = 11.sp) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            // Show more categories if there are more than 4
+            if (categories.size > 4) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    categories.drop(4).take(4).forEach { category ->
+                        FilterChip(
+                            selected = selectedLabel == category.name,
+                            onClick = { onLabelChange(category.name) },
+                            label = { Text(category.name.replace("_", " "), fontSize = 11.sp) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
             }
         }
     }

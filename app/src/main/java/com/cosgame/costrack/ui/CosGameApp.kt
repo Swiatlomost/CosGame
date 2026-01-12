@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -142,9 +143,13 @@ fun CosGameApp() {
 
                 // Train Movement (Activity Missions)
                 composable(Screen.TRAIN_MOVEMENT) {
+                    val missionsViewModel: MissionsViewModel = viewModel()
+                    val missionsUiState by missionsViewModel.uiState.collectAsState()
+
                     MissionsScreen(
+                        viewModel = missionsViewModel,
                         onStartMission = { mission ->
-                            navController.navigate(Screen.activeMissionRoute(mission.id))
+                            navController.navigate(Screen.activeMissionRoute(mission.id, missionsUiState.selectedCategory))
                         },
                         onGoToTraining = {
                             navController.navigate(Screen.TRAINING)
@@ -163,11 +168,16 @@ fun CosGameApp() {
 
                 composable(
                     route = Screen.ACTIVE_MISSION,
-                    arguments = listOf(navArgument("missionId") { type = NavType.StringType })
+                    arguments = listOf(
+                        navArgument("missionId") { type = NavType.StringType },
+                        navArgument("category") { type = NavType.StringType; defaultValue = "" }
+                    )
                 ) { backStackEntry ->
                     val missionId = backStackEntry.arguments?.getString("missionId") ?: ""
+                    val category = backStackEntry.arguments?.getString("category") ?: ""
                     ActiveMissionScreen(
                         missionId = missionId,
+                        category = category,
                         onMissionComplete = {
                             navController.popBackStack()
                         },

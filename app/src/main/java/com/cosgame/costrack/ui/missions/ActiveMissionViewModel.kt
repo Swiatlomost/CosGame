@@ -3,10 +3,12 @@ package com.cosgame.costrack.ui.missions
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.cosgame.costrack.learn.CategoryRepository
 import com.cosgame.costrack.sensor.AccelerometerManager
 import com.cosgame.costrack.sensor.GyroscopeManager
 import com.cosgame.costrack.sensor.SensorConfig
 import com.cosgame.costrack.training.ActivityType
+import com.cosgame.costrack.training.TrainingDatabase
 import com.cosgame.costrack.training.TrainingRepository
 import com.cosgame.costrack.training.TrainingSample
 import com.cosgame.costrack.training.TrainingSession
@@ -24,6 +26,8 @@ import kotlinx.coroutines.launch
 class ActiveMissionViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = TrainingRepository.getInstance(application)
+    private val database = TrainingDatabase.getInstance(application)
+    private val categoryRepository = CategoryRepository(database.categoryDao())
 
     private val sensorConfig = SensorConfig.DEFAULT // 50Hz
     private val accelerometerManager = AccelerometerManager(application, sensorConfig)
@@ -34,9 +38,10 @@ class ActiveMissionViewModel(application: Application) : AndroidViewModel(applic
 
     private var missionJob: Job? = null
     private var currentSessionId: Long = 0
+    private var currentCategory: String = ""
     private val collectedSamples = mutableListOf<TrainingSample>()
 
-    fun setMission(mission: Mission) {
+    fun setMission(mission: Mission, category: String = "") {
         // Don't reset if mission is already running or completed
         val currentPhase = _uiState.value.phase
         if (currentPhase == MissionPhase.COUNTDOWN ||
@@ -45,10 +50,12 @@ class ActiveMissionViewModel(application: Application) : AndroidViewModel(applic
             return
         }
 
+        currentCategory = category
         _uiState.value = _uiState.value.copy(
             mission = mission,
             remainingSeconds = mission.durationSeconds,
-            phase = MissionPhase.READY
+            phase = MissionPhase.READY,
+            category = category
         )
     }
 
@@ -73,8 +80,8 @@ class ActiveMissionViewModel(application: Application) : AndroidViewModel(applic
     }
 
     private suspend fun startCollection(mission: Mission) {
-        // Create session
-        val session = TrainingSession.start(mission.activityType, mission.durationSeconds)
+        // Create session with category
+        val session = TrainingSession.start(mission.activityType, mission.durationSeconds, currentCategory)
         currentSessionId = repository.insertSession(session)
         collectedSamples.clear()
 
@@ -123,6 +130,11 @@ class ActiveMissionViewModel(application: Application) : AndroidViewModel(applic
                 completed = true
             )
             repository.updateSession(completedSession)
+
+            // Increment movement samples for the category
+            if (currentCategory.isNotEmpty()) {
+                categoryRepository.incrementMovementSamples(currentCategory)
+            }
         }
 
         _uiState.value = _uiState.value.copy(
@@ -143,7 +155,8 @@ class ActiveMissionViewModel(application: Application) : AndroidViewModel(applic
             gyroX = gyro.x,
             gyroY = gyro.y,
             gyroZ = gyro.z,
-            sessionId = currentSessionId
+            sessionId = currentSessionId,
+            category = currentCategory
         )
         collectedSamples.add(sample)
     }
@@ -200,5 +213,6 @@ data class ActiveMissionUiState(
     val countdownValue: Int = 3,
     val remainingSeconds: Int = 0,
     val samplesCollected: Int = 0,
-    val progress: Float = 0f
+    val progress: Float = 0f,
+    val category: String = ""
 )

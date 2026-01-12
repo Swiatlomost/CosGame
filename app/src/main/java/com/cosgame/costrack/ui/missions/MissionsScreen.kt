@@ -12,6 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.cosgame.costrack.learn.Category
 import com.cosgame.costrack.training.ActivityType
 
 /**
@@ -56,6 +57,15 @@ fun MissionsScreen(
                     onGoToTraining = onGoToTraining,
                     onGoToTest = onGoToTest,
                     onGoToDataBrowser = onGoToDataBrowser
+                )
+            }
+
+            // Category selector
+            item {
+                CategorySelector(
+                    categories = uiState.categories,
+                    selectedCategory = uiState.selectedCategory,
+                    onCategorySelected = { viewModel.setSelectedCategory(it) }
                 )
             }
 
@@ -369,6 +379,63 @@ private fun TouchMissionsCard(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onPrimary
                 )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CategorySelector(
+    categories: List<Category>,
+    selectedCategory: String,
+    onCategorySelected: (String) -> Unit
+) {
+    Column {
+        Text(
+            text = "Category for training",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        if (categories.isEmpty()) {
+            Text(
+                text = "No categories defined. Go to Learn > My Categories to add some.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        } else {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                categories.take(4).forEach { category ->
+                    FilterChip(
+                        selected = selectedCategory == category.name,
+                        onClick = { onCategorySelected(category.name) },
+                        label = { Text(category.name.replace("_", " "), fontSize = 11.sp) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            // Show more categories if there are more than 4
+            if (categories.size > 4) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    categories.drop(4).take(4).forEach { category ->
+                        FilterChip(
+                            selected = selectedCategory == category.name,
+                            onClick = { onCategorySelected(category.name) },
+                            label = { Text(category.name.replace("_", " "), fontSize = 11.sp) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
             }
         }
     }
