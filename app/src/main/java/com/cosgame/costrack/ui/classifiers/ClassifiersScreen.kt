@@ -26,8 +26,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.cosgame.costrack.classifier.HarActivity
+import com.cosgame.costrack.sensor.AccelerometerInfo
+import com.cosgame.costrack.sensor.GyroscopeInfo
+import com.cosgame.costrack.sensor.SensorReading
+import com.cosgame.costrack.ui.classifiers.ModelType
 
 /**
  * Classifiers screen showing HAR classification results.
@@ -36,7 +40,8 @@ import com.cosgame.costrack.classifier.HarActivity
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClassifiersScreen(
-    viewModel: ClassifiersViewModel = viewModel(),
+    viewModel: ClassifiersViewModel = hiltViewModel(),
+    onGoToActivityData: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -46,6 +51,9 @@ fun ClassifiersScreen(
             TopAppBar(
                 title = { Text("Activity Recognition") },
                 actions = {
+                    TextButton(onClick = onGoToActivityData) {
+                        Text("View Data")
+                    }
                     if (uiState.isDevMode) {
                         TextButton(onClick = { }) {
                             Text("DEV", color = MaterialTheme.colorScheme.tertiary)
@@ -64,6 +72,21 @@ fun ClassifiersScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Model selector
+            ModelSelectorCard(
+                selectedModel = uiState.selectedModel,
+                hasPersonalModel = uiState.hasPersonalModel,
+                onSelectModel = viewModel::selectModel,
+                enabled = !uiState.isRunning
+            )
+
+            // Sensor status (always visible)
+            SensorStatusCard(
+                accelerometerActive = uiState.accelerometerActive,
+                gyroscopeActive = uiState.gyroscopeActive,
+                isRunning = uiState.isRunning
+            )
+
             // Error message
             uiState.error?.let { error ->
                 ErrorCard(error = error, onDismiss = viewModel::clearError)
@@ -128,6 +151,17 @@ fun ClassifiersScreen(
                         logs = uiState.sensorLogs,
                         onCopy = { viewModel.getSensorLogsAsText() },
                         onClear = viewModel::clearSensorLogs
+                    )
+
+                    // Sensor hardware info
+                    SensorDebugCard(
+                        accelerometerReading = uiState.accelerometerReading,
+                        gyroscopeReading = uiState.gyroscopeReading,
+                        accelerometerSamples = uiState.accelerometerSampleCount,
+                        gyroscopeSamples = uiState.gyroscopeSampleCount,
+                        samplingFrequency = viewModel.getSamplingFrequency(),
+                        accelInfo = viewModel.getAccelerometerInfo(),
+                        gyroInfo = viewModel.getGyroscopeInfo()
                     )
                 }
             }
@@ -443,6 +477,72 @@ private fun StatColumn(label: String, value: String) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ModelSelectorCard(
+    selectedModel: ModelType,
+    hasPersonalModel: Boolean,
+    onSelectModel: (ModelType) -> Unit,
+    enabled: Boolean
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Model",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Generic model button
+                FilterChip(
+                    selected = selectedModel == ModelType.GENERIC,
+                    onClick = { onSelectModel(ModelType.GENERIC) },
+                    label = { Text("Generic") },
+                    enabled = enabled,
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Personal model button
+                FilterChip(
+                    selected = selectedModel == ModelType.PERSONAL,
+                    onClick = { onSelectModel(ModelType.PERSONAL) },
+                    label = {
+                        Text(if (hasPersonalModel) "Personal" else "Personal (not trained)")
+                    },
+                    enabled = enabled && hasPersonalModel,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = when (selectedModel) {
+                    ModelType.GENERIC -> "UCI HAR Dataset model (6 classes)"
+                    ModelType.PERSONAL -> "Your trained model (5 classes)"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
 @Composable
 private fun PlaceholderCard() {
     Card(
@@ -555,6 +655,206 @@ private fun DebugLogsCard(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Simple sensor status indicator (always visible).
+ */
+@Composable
+private fun SensorStatusCard(
+    accelerometerActive: Boolean,
+    gyroscopeActive: Boolean,
+    isRunning: Boolean
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (accelerometerActive && gyroscopeActive)
+                MaterialTheme.colorScheme.secondaryContainer
+            else
+                MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SensorIndicator(
+                name = "Accelerometer",
+                active = accelerometerActive
+            )
+            SensorIndicator(
+                name = "Gyroscope",
+                active = gyroscopeActive
+            )
+        }
+    }
+}
+
+@Composable
+private fun SensorIndicator(
+    name: String,
+    active: Boolean
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(
+                    if (active) Color(0xFF4CAF50) else Color(0xFF9E9E9E)
+                )
+        )
+        Text(
+            text = name,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (active)
+                MaterialTheme.colorScheme.onSecondaryContainer
+            else
+                MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/**
+ * Detailed sensor debug info (DEV mode only).
+ */
+@Composable
+private fun SensorDebugCard(
+    accelerometerReading: SensorReading?,
+    gyroscopeReading: SensorReading?,
+    accelerometerSamples: Long,
+    gyroscopeSamples: Long,
+    samplingFrequency: Int,
+    accelInfo: AccelerometerInfo?,
+    gyroInfo: GyroscopeInfo?
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Sensor Debug Info",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onTertiaryContainer
+            )
+
+            // Current readings
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = "Accelerometer",
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    accelerometerReading?.let { r ->
+                        Text(
+                            text = "X: ${String.format("%+.3f", r.x)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace
+                        )
+                        Text(
+                            text = "Y: ${String.format("%+.3f", r.y)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace
+                        )
+                        Text(
+                            text = "Z: ${String.format("%+.3f", r.z)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    } ?: Text("--", style = MaterialTheme.typography.bodySmall)
+                }
+                Column {
+                    Text(
+                        text = "Gyroscope",
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    gyroscopeReading?.let { r ->
+                        Text(
+                            text = "X: ${String.format("%+.3f", r.x)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace
+                        )
+                        Text(
+                            text = "Y: ${String.format("%+.3f", r.y)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace
+                        )
+                        Text(
+                            text = "Z: ${String.format("%+.3f", r.z)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    } ?: Text("--", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+
+            Divider()
+
+            // Statistics
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = "$accelerometerSamples", style = MaterialTheme.typography.titleMedium)
+                    Text(text = "Accel Samples", style = MaterialTheme.typography.labelSmall)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = "$gyroscopeSamples", style = MaterialTheme.typography.titleMedium)
+                    Text(text = "Gyro Samples", style = MaterialTheme.typography.labelSmall)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = "$samplingFrequency Hz", style = MaterialTheme.typography.titleMedium)
+                    Text(text = "Sample Rate", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+
+            // Hardware info
+            if (accelInfo != null) {
+                Divider()
+                Text(
+                    text = "Accel: ${accelInfo.name}",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = FontFamily.Monospace
+                )
+                Text(
+                    text = "  Max: ${accelInfo.maxFrequencyHz} Hz, Range: ±${String.format("%.1f", accelInfo.maxRange)} m/s²",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+
+            if (gyroInfo != null) {
+                Text(
+                    text = "Gyro: ${gyroInfo.name}",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = FontFamily.Monospace
+                )
+                Text(
+                    text = "  Max: ${gyroInfo.maxFrequencyHz} Hz, Range: ±${String.format("%.0f", gyroInfo.maxRangeDegPerSec)}°/s",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = FontFamily.Monospace
+                )
             }
         }
     }

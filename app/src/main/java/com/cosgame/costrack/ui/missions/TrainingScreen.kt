@@ -15,7 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.cosgame.costrack.training.ActivityType
 
 /**
@@ -24,7 +24,7 @@ import com.cosgame.costrack.training.ActivityType
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TrainingScreen(
-    viewModel: TrainingViewModel = viewModel(),
+    viewModel: TrainingViewModel = hiltViewModel(),
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -74,6 +74,11 @@ fun TrainingScreen(
                         }
                     }
                 }
+            }
+
+            // New samples card (only if there's a trained model and new samples)
+            if (uiState.hasTrainedModel && uiState.hasNewSamples()) {
+                NewSamplesCard(uiState = uiState)
             }
 
             // Data statistics card
@@ -128,6 +133,86 @@ fun TrainingScreen(
 }
 
 @Composable
+private fun NewSamplesCard(uiState: TrainingUiState) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "New Data Since Last Training",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Surface(
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Text(
+                        text = "${uiState.totalNewSamples}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "These samples from your feedback will be included in the next training:",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            ActivityType.entries.forEach { activityType ->
+                val newCount = uiState.getNewSampleCount(activityType)
+                if (newCount > 0) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "${activityType.icon} ${activityType.displayName}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = "+$newCount",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "Retrain to improve model with this new data!",
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@Composable
 private fun DataStatisticsCard(uiState: TrainingUiState) {
     Card {
         Column(
@@ -151,7 +236,7 @@ private fun DataStatisticsCard(uiState: TrainingUiState) {
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            ActivityType.values().forEach { activityType ->
+            ActivityType.entries.forEach { activityType ->
                 val count = uiState.getSampleCount(activityType)
                 val progress = (count.toFloat() / uiState.minSamplesPerClass).coerceIn(0f, 1f)
                 val isComplete = count >= uiState.minSamplesPerClass
