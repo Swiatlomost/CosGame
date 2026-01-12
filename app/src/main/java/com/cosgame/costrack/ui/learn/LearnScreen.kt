@@ -18,7 +18,8 @@ fun LearnScreen(
     onTrainTouch: () -> Unit,
     onTrainMovement: () -> Unit,
     onManageCategories: () -> Unit,
-    onTrainModels: () -> Unit = {}
+    onTrainModels: () -> Unit = {},
+    onTestModels: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -154,6 +155,47 @@ fun LearnScreen(
                             Icons.Filled.ArrowForward,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                }
+            }
+
+            // Test Models Card
+            item {
+                Card(
+                    onClick = onTestModels,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "🎯",
+                            fontSize = 32.sp
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Test Models",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Real-time category recognition",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                        Icon(
+                            Icons.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer
                         )
                     }
                 }

@@ -19,6 +19,7 @@ import com.cosgame.costrack.ui.home.HomeScreen
 import com.cosgame.costrack.ui.learn.LearnScreen
 import com.cosgame.costrack.ui.learn.CategoriesScreen
 import com.cosgame.costrack.ui.learn.CategoryTrainingScreen
+import com.cosgame.costrack.ui.learn.CategoryTestScreen
 import com.cosgame.costrack.ui.missions.*
 import com.cosgame.costrack.ui.navigation.Screen
 import com.cosgame.costrack.ui.touch.TouchMissionsScreen
@@ -123,6 +124,9 @@ fun CosGameApp() {
                         },
                         onTrainModels = {
                             navController.navigate(Screen.CATEGORY_TRAINING)
+                        },
+                        onTestModels = {
+                            navController.navigate(Screen.CATEGORY_TEST)
                         }
                     )
                 }
@@ -139,6 +143,15 @@ fun CosGameApp() {
                 // Category training
                 composable(Screen.CATEGORY_TRAINING) {
                     CategoryTrainingScreen(
+                        onBack = {
+                            navController.popBackStack()
+                        }
+                    )
+                }
+
+                // Category testing
+                composable(Screen.CATEGORY_TEST) {
+                    CategoryTestScreen(
                         onBack = {
                             navController.popBackStack()
                         }
