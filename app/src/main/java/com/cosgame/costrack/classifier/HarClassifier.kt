@@ -20,9 +20,15 @@ import java.nio.channels.FileChannel
  */
 class HarClassifier(
     private val context: Context,
-    private val modelFileName: String = "har_model.tflite",
-    private val requestedWindowSize: Int = 128
+    private val config: HarClassifierConfig = HarClassifierConfig()
 ) : Classifier {
+
+    // For backward compatibility
+    constructor(
+        context: Context,
+        modelFileName: String,
+        requestedWindowSize: Int
+    ) : this(context, HarClassifierConfig(modelFileName = modelFileName, windowSize = requestedWindowSize))
 
     override val id: String = "har_classifier"
     override val name: String = "Human Activity Recognition"
@@ -32,7 +38,7 @@ class HarClassifier(
     override val isReady: Boolean get() = _isReady
 
     // Detected model dimensions
-    private var modelWindowSize: Int = requestedWindowSize
+    private var modelWindowSize: Int = config.windowSize
     private var modelFeatures: Int = 6
     private var modelNumClasses: Int = 6
     override val windowSize: Int get() = modelWindowSize
@@ -74,7 +80,7 @@ class HarClassifier(
                     modelFeatures = inputShape[1]
                 }
                 else -> {
-                    modelWindowSize = requestedWindowSize
+                    modelWindowSize = config.windowSize
                     modelFeatures = 6
                 }
             }
@@ -274,15 +280,12 @@ class HarClassifier(
 
     private fun normalizeAccel(value: Float): Float {
         // Normalize accelerometer (m/s²) to [-1, 1] range
-        // UCI HAR data was normalized per-window. Using 1g (9.8) as base gives better spread.
-        // Typical walking: 0.5-1.5g, sitting: ~1g (gravity only)
-        return (value / ACCEL_MAX).coerceIn(-1f, 1f)
+        return (value / config.accelNormMax).coerceIn(-1f, 1f)
     }
 
     private fun normalizeGyro(value: Float): Float {
         // Normalize gyroscope (rad/s) to [-1, 1] range
-        // Typical walking gyro: 0-3 rad/s, running: up to 5 rad/s
-        return (value / GYRO_MAX).coerceIn(-1f, 1f)
+        return (value / config.gyroNormMax).coerceIn(-1f, 1f)
     }
 
     private fun softmax(logits: FloatArray): FloatArray {
@@ -294,14 +297,10 @@ class HarClassifier(
 
     companion object {
         private const val TAG = "HarClassifier"
-        // Adjusted normalization: UCI HAR normalized to [-1,1] with typical activity ranges
-        // Using smaller divisors gives more spread in the normalized values
-        private const val ACCEL_MAX = 10f  // m/s² (~1g) - gives better spread for typical activities
-        private const val GYRO_MAX = 5f    // rad/s - typical walking/movement range
     }
 
     private fun loadModelFile(): MappedByteBuffer {
-        val assetFileDescriptor = context.assets.openFd(modelFileName)
+        val assetFileDescriptor = context.assets.openFd(config.modelFileName)
         val inputStream = FileInputStream(assetFileDescriptor.fileDescriptor)
         val fileChannel = inputStream.channel
         val startOffset = assetFileDescriptor.startOffset
@@ -323,5 +322,8 @@ data class HarClassifierConfig(
     val modelFileName: String = "har_model.tflite",
     val windowSize: Int = 128,
     val confidenceThreshold: Float = 0.6f,
-    val inferenceIntervalMs: Long = 500 // Run inference every 500ms
+    val inferenceIntervalMs: Long = 500, // Run inference every 500ms
+    // Normalization parameters for sensor data
+    val accelNormMax: Float = 10f,  // m/s² - max accelerometer value for normalization
+    val gyroNormMax: Float = 5f     // rad/s - max gyroscope value for normalization
 )
